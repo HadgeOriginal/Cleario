@@ -1,0 +1,706 @@
+<Page
+    x:Class="Cleario.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Padding="20" MaxWidth="1180" HorizontalAlignment="Center">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Settings"
+                   FontSize="30"
+                   FontWeight="SemiBold"/>
+
+        <TabView x:Name="SettingsTabView"
+                 Grid.Row="1"
+                 Margin="0,18,0,0"
+                 IsAddTabButtonVisible="False"
+                 HorizontalAlignment="Center"
+                 MaxWidth="1180">
+            <TabViewItem Header="General" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Width="760" MaxWidth="760" Spacing="18" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Cinemeta"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Disable or enable Cinemeta"
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <ComboBox x:Name="MetadataProviderComboBox"
+                                              Width="320"
+                                              SelectionChanged="MetadataProviderComboBox_SelectionChanged">
+                                        <ComboBoxItem Content="Enabled" Tag="Cinemeta"/>
+                                        <ComboBoxItem Content="Disabled" Tag="AddonDecided"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Poster size"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Change poster size across Home, Discover, Search, Library, and Details."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <ComboBox x:Name="PosterSizeComboBox"
+                                              Width="320"
+                                              SelectionChanged="PosterSizeComboBox_SelectionChanged">
+                                        <ComboBoxItem Content="Compact" Tag="Compact"/>
+                                        <ComboBoxItem Content="Default" Tag="Default"/>
+                                        <ComboBoxItem Content="Large" Tag="Large"/>
+                                        <ComboBoxItem Content="Extra large" Tag="ExtraLarge"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Poster hover info"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Show year and IMDb rating when you hover over posters across the app."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <ToggleSwitch x:Name="ShowPosterBadgesToggle"
+                                                  Header="Show year and IMDb on poster hover"
+                                                  Toggled="ShowPosterBadgesToggle_Toggled"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Memory Saver"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Turn this on to use less RAM by reloading sidebar pages when you switch away. Turn it off to keep page state in memory so Home, Discover, Library, and other pages reopen faster."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <ToggleSwitch x:Name="SaveMemoryToggle"
+                                                  Header="Reload pages when switching sidebar tabs"
+                                                  Toggled="SaveMemoryToggle_Toggled"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Import and export"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Export your settings, addons, library, and watch history to a file you can import on another machine."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Button x:Name="ExportDataButton"
+                                                Content="Export"
+                                                Click="ExportDataButton_Click"
+                                                Padding="16,10"/>
+                                        <Button x:Name="ImportDataButton"
+                                                Content="Import"
+                                                Click="ImportDataButton_Click"
+                                                Padding="16,10"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#1C1010"
+                                    BorderBrush="#CC5B5B"
+                                    BorderThickness="1.5"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Danger zone"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"
+                                               Foreground="#FFD9A3A3"/>
+
+                                    <TextBlock Text="Reset Cleario back to a first-run state. This removes settings, addons, library data, and can also remove watch history."
+                                               Opacity="0.88"
+                                               Foreground="#FFF1C0C0"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <Button x:Name="ResetFactorySettingsButton"
+                                            Content="Reset to default"
+                                            Click="ResetFactorySettingsButton_Click"
+                                            HorizontalAlignment="Left"
+                                            Padding="16,10"
+                                            Background="#882E2E"
+                                            BorderBrush="#CC5B5B"
+                                            Foreground="White"/>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+            <TabViewItem Header="Player" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Width="760" MaxWidth="760" Spacing="18" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Player"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Change click behavior while video is playing."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Playback engine" FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="PlaybackEngineComboBox"
+                                                  Width="320"
+                                                  SelectionChanged="PlaybackEngineComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="MPV" Tag="MPV"/>
+                                            <ComboBoxItem Content="LibVLC" Tag="LibVLC"/>
+                                            <ComboBoxItem Content="External player" Tag="ExternalPlayer"/>
+                                        </ComboBox>
+
+                                        <StackPanel x:Name="ExternalPlayerPanel"
+                                                    Spacing="8"
+                                                    Visibility="Collapsed">
+                                            <TextBlock Text="External player" FontWeight="SemiBold"/>
+                                            <ComboBox x:Name="ExternalPlayerComboBox"
+                                                      Width="320"
+                                                      SelectionChanged="ExternalPlayerComboBox_SelectionChanged">
+                                                <ComboBoxItem Content="VLC" Tag="VLC"/>
+                                            </ComboBox>
+                                            <TextBlock Text="Cleario opens direct streams in VLC. In-app click controls are disabled for external playback."
+                                                       Opacity="0.65"
+                                                       FontSize="12"
+                                                       TextWrapping="WrapWholeWords"/>
+                                        </StackPanel>
+
+                                        <CheckBox x:Name="AutoFallbackCheckBox"
+                                                  Content="Auto Fallback"
+                                                  Checked="AutoFallbackCheckBox_Changed"
+                                                  Unchecked="AutoFallbackCheckBox_Changed"/>
+
+                                        <StackPanel x:Name="FallbackEnginePanel"
+                                                    Spacing="8"
+                                                    Visibility="Collapsed">
+                                            <TextBlock Text="Fallback option" FontWeight="SemiBold"/>
+                                            <ComboBox x:Name="FallbackPlaybackEngineComboBox"
+                                                      Width="320"
+                                                      SelectionChanged="FallbackPlaybackEngineComboBox_SelectionChanged"/>
+                                            <TextBlock Text="When the selected engine cannot open a stream, Cleario can automatically try this fallback engine."
+                                                       Opacity="0.65"
+                                                       FontSize="12"
+                                                       TextWrapping="WrapWholeWords"/>
+                                        </StackPanel>
+
+                                    </StackPanel>
+
+                                    <ToggleSwitch x:Name="PlayerSingleClickPlayPauseToggle"
+                                                  Header="Single click toggles play and pause"
+                                                  Toggled="PlayerSingleClickPlayPauseToggle_Toggled"/>
+
+                                    <ToggleSwitch x:Name="PlayerDoubleClickFullScreenToggle"
+                                                  Header="Double click toggles fullscreen"
+                                                  Toggled="PlayerDoubleClickFullScreenToggle_Toggled"/>
+
+                                    <Button x:Name="AdvancedPlayerSettingsButton"
+                                            Content="Advanced settings"
+                                            Click="AdvancedPlayerSettingsButton_Click"
+                                            HorizontalAlignment="Left"
+                                            Padding="14,7"/>
+
+                                    <StackPanel x:Name="AdvancedPlayerSettingsPanel"
+                                                Spacing="10"
+                                                Visibility="Collapsed">
+                                        <TextBlock Text="Embedded player retry attempts" FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="MpvRetryAttemptsComboBox"
+                                                  Width="320"
+                                                  SelectionChanged="MpvRetryAttemptsComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="Disabled" Tag="0"/>
+                                            <ComboBoxItem Content="1" Tag="1"/>
+                                            <ComboBoxItem Content="2" Tag="2"/>
+                                            <ComboBoxItem Content="3" Tag="3"/>
+                                            <ComboBoxItem Content="4" Tag="4"/>
+                                            <ComboBoxItem Content="5" Tag="5"/>
+                                            <ComboBoxItem Content="6" Tag="6"/>
+                                            <ComboBoxItem Content="7" Tag="7"/>
+                                            <ComboBoxItem Content="8" Tag="8"/>
+                                            <ComboBoxItem Content="9" Tag="9"/>
+                                            <ComboBoxItem Content="10" Tag="10"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Show retry message from attempt" FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="MpvRetryMessageAttemptComboBox"
+                                                  Width="320"
+                                                  SelectionChanged="MpvRetryMessageAttemptComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="Disabled" Tag="0"/>
+                                            <ComboBoxItem Content="1" Tag="1"/>
+                                            <ComboBoxItem Content="2" Tag="2"/>
+                                            <ComboBoxItem Content="3" Tag="3"/>
+                                            <ComboBoxItem Content="4" Tag="4"/>
+                                            <ComboBoxItem Content="5" Tag="5"/>
+                                            <ComboBoxItem Content="6" Tag="6"/>
+                                            <ComboBoxItem Content="7" Tag="7"/>
+                                            <ComboBoxItem Content="8" Tag="8"/>
+                                            <ComboBoxItem Content="9" Tag="9"/>
+                                            <ComboBoxItem Content="10" Tag="10"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Default tracks"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Choose the preferred audio and subtitle languages. You can also force subtitles off by default."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Default audio language" FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="PreferredAudioLanguageComboBox"
+                                                  Width="320"
+                                                  SelectionChanged="PreferredAudioLanguageComboBox_SelectionChanged"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Default subtitle language" FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="PreferredSubtitleLanguageComboBox"
+                                                  Width="320"
+                                                  SelectionChanged="PreferredSubtitleLanguageComboBox_SelectionChanged"/>
+                                        <CheckBox x:Name="DisableSubtitlesByDefaultCheckBox"
+                                                  Content="Disable subtitles by default"
+                                                  Checked="DisableSubtitlesByDefaultCheckBox_Changed"
+                                                  Unchecked="DisableSubtitlesByDefaultCheckBox_Changed"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Next episode"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Control the end-of-episode popup and what happens when an episode finishes."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <ToggleSwitch x:Name="EnableNextEpisodePopupToggle"
+                                                  Header="Show next episode popup"
+                                                  Toggled="EnableNextEpisodePopupToggle_Toggled"/>
+
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Show popup before the episode ends"
+                                                   FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="NextEpisodePopupSecondsComboBox"
+                                                  Width="320"
+                                                  SelectionChanged="NextEpisodePopupSecondsComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="10 seconds" Tag="10"/>
+                                            <ComboBoxItem Content="15 seconds" Tag="15"/>
+                                            <ComboBoxItem Content="20 seconds" Tag="20"/>
+                                            <ComboBoxItem Content="30 seconds" Tag="30"/>
+                                            <ComboBoxItem Content="45 seconds" Tag="45"/>
+                                            <ComboBoxItem Content="60 seconds" Tag="60"/>
+                                            <ComboBoxItem Content="90 seconds" Tag="90"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <ToggleSwitch x:Name="AutoPlayNextEpisodeToggle"
+                                                  Header="Automatically go to the next episode when playback ends"
+                                                  Toggled="AutoPlayNextEpisodeToggle_Toggled"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+            <TabViewItem Header="Details page" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Width="760" MaxWidth="760" Spacing="18" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="TV show details"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Choose how episodes are shown on series details pages."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="TV show view" FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="DetailsSeriesViewComboBox"
+                                                  Width="320"
+                                                  SelectionChanged="DetailsSeriesViewComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="Full view" Tag="Full"/>
+                                            <ComboBoxItem Content="Compact view" Tag="Compact"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <ToggleSwitch x:Name="DisableSpoilersToggle"
+                                                  Header="Disable Spoilers"
+                                                  Toggled="DisableSpoilersToggle_Toggled"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+            <TabViewItem Header="Caching" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Width="760" MaxWidth="760" Spacing="18" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Artwork cache"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Store poster images in a local cache folder so they load faster and do not need to be fetched every time."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <ToggleSwitch x:Name="CacheImagesToggle"
+                                                  Header="Enable poster cache"
+                                                  Toggled="CacheImagesToggle_Toggled"/>
+
+                                    <StackPanel Spacing="8"
+                                                Opacity="0.9">
+                                        <TextBlock Text="Max cache size"
+                                                   FontSize="16"
+                                                   FontWeight="SemiBold"/>
+                                        <ComboBox x:Name="CacheLimitComboBox"
+                                                  Width="220"
+                                                  SelectionChanged="CacheLimitComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="1 GB" Tag="1"/>
+                                            <ComboBoxItem Content="2 GB" Tag="2"/>
+                                            <ComboBoxItem Content="4 GB" Tag="4"/>
+                                            <ComboBoxItem Content="8 GB" Tag="8"/>
+                                            <ComboBoxItem Content="10 GB" Tag="10"/>
+                                            <ComboBoxItem Content="20 GB" Tag="20"/>
+                                            <ComboBoxItem Content="Infinite" Tag="0"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+
+            <TabViewItem Header="Integrations" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Width="760" MaxWidth="760" Spacing="18" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="14">
+                                    <TextBlock Text="Discord Rich Presence"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <ToggleSwitch x:Name="DiscordRichPresenceEnabledToggle"
+                                                  Header="Enable Discord Rich Presence"
+                                                  Toggled="DiscordRichPresenceEnabledToggle_Toggled"/>
+
+                                    <Button x:Name="DiscordOptionsVisibilityButton"
+                                            Content="Show options"
+                                            HorizontalAlignment="Left"
+                                            Click="DiscordOptionsVisibilityButton_Click"/>
+
+                                    <StackPanel x:Name="DiscordOptionsPanel"
+                                                Spacing="16"
+                                                Visibility="Collapsed">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Pages shown on Discord"
+                                                       FontSize="16"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock Text="Turn off pages you do not want shown in your Discord activity."
+                                                       Opacity="0.75"
+                                                       TextWrapping="WrapWholeWords"/>
+                                            <StackPanel x:Name="DiscordPagesPanel"
+                                                        Spacing="6"/>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Playback display"
+                                                       FontSize="16"
+                                                       FontWeight="SemiBold"/>
+                                            <ToggleSwitch x:Name="DiscordShowPlaybackTimestampToggle"
+                                                          Header="Show movie or episode time and duration"
+                                                          Toggled="DiscordOptionToggle_Toggled"/>
+                                            <ToggleSwitch x:Name="DiscordShowPosterToggle"
+                                                          Header="Show poster"
+                                                          Toggled="DiscordOptionToggle_Toggled"/>
+                                            <ToggleSwitch x:Name="DiscordShowTitleToggle"
+                                                          Header="Show movie or series title"
+                                                          Toggled="DiscordOptionToggle_Toggled"/>
+                                            <ToggleSwitch x:Name="DiscordShowClearioRunningToggle"
+                                                          Header="Show that Cleario is running"
+                                                          Toggled="DiscordOptionToggle_Toggled"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <TextBlock x:Name="DiscordStatusTextBlock"
+                                               Text="Discord Rich Presence is off."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="14">
+                                    <TextBlock Text="Trakt Integration"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock x:Name="TraktStatusTextBlock"
+                                               Text="Trakt is not connected."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Button x:Name="TraktConnectButton"
+                                                Content="Connect Trakt"
+                                                Click="TraktConnectButton_Click"
+                                                Padding="16,10"/>
+
+                                        <Button x:Name="TraktDisconnectButton"
+                                                Content="Disconnect"
+                                                Click="TraktDisconnectButton_Click"
+                                                Padding="16,10"/>
+
+                                        <Button x:Name="TraktSyncButton"
+                                                Content="Sync Trakt"
+                                                Click="TraktSyncButton_Click"
+                                                Padding="16,10"/>
+                                    </StackPanel>
+
+                                    <Border x:Name="TraktCodePanel"
+                                            Background="#101010"
+                                            BorderBrush="#303030"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="12"
+                                            Visibility="Collapsed">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Trakt connection is waiting for approval."
+                                                       FontSize="16"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="TraktConnectMessageTextBlock"
+                                                       Text="Waiting for authorization..."
+                                                       Opacity="0.75"
+                                                       TextWrapping="WrapWholeWords"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <StackPanel x:Name="TraktOptionsPanel"
+                                                Spacing="8">
+                                        <ToggleSwitch x:Name="TraktScrobblingToggle"
+                                                      Header="Enable Trakt scrobbling"
+                                                      Toggled="TraktOptionToggle_Toggled"/>
+                                        <ToggleSwitch x:Name="TraktWatchHistoryCatalogToggle"
+                                                      Header="Show Trakt watch history catalog on Home"
+                                                      Toggled="TraktOptionToggle_Toggled"/>
+                                        <ToggleSwitch x:Name="TraktWatchlistCatalogToggle"
+                                                      Header="Show Trakt watchlist catalog on Home"
+                                                      Toggled="TraktOptionToggle_Toggled"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+            <TabViewItem Header="Home catalogs" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel MaxWidth="980" Width="980" Spacing="16" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <TextBlock Text="Choose the order of catalogs on Home."
+                                       Opacity="0.75"
+                                       TextWrapping="WrapWholeWords"/>
+
+                            <StackPanel x:Name="HomeCatalogsPanel"
+                                        Spacing="10"
+                                        Width="980"
+                                        HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+            <TabViewItem Header="History" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Width="760" MaxWidth="760" Spacing="18" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="History"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Reset all watch progress, watched states, and continue watching items."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <Button x:Name="ResetWatchStatusButton"
+                                            Content="Reset watch status"
+                                            Click="ResetWatchStatusButton_Click"
+                                            HorizontalAlignment="Left"
+                                            Padding="16,10"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+
+            <TabViewItem x:Name="AboutTabItem" Header="About" IsClosable="False">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid HorizontalAlignment="Center">
+                        <StackPanel Width="760" MaxWidth="760" Spacing="18" Padding="0,8,0,16" HorizontalAlignment="Center">
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="About Cleario"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock x:Name="CurrentVersionTextBlock"
+                                               Text="Current version: Unknown"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"/>
+
+                                    <ToggleSwitch x:Name="CheckForUpdatesAtStartupToggle"
+                                                  Header="Check for updates at startup"
+                                                  Toggled="CheckForUpdatesAtStartupToggle_Toggled"/>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <Button x:Name="CheckForUpdatesButton"
+                                                Content="Check for updates"
+                                                Click="CheckForUpdatesButton_Click"
+                                                Padding="16,10"/>
+
+                                        <Button x:Name="OpenGitHubButton"
+                                                Content="Open GitHub"
+                                                Click="OpenGitHubButton_Click"
+                                                Padding="16,10"/>
+
+                                        <Button x:Name="OpenLogsButton"
+                                                Content="Open logs"
+                                                Click="OpenLogsButton_Click"
+                                                Padding="16,10"/>
+
+                                        <ProgressRing x:Name="UpdateProgressRing"
+                                                      Width="28"
+                                                      Height="28"
+                                                      IsActive="False"/>
+                                    </StackPanel>
+
+                                    <TextBlock x:Name="UpdateStatusTextBlock"
+                                               Text="Check GitHub for the newest Cleario release."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <TextBlock Text="Crash logs"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               Margin="0,8,0,0"/>
+
+                                    <TextBlock x:Name="CrashLogLocationTextBlock"
+                                               TextWrapping="WrapWholeWords"
+                                               Opacity="0.75"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </TabViewItem>
+
+        </TabView>
+    </Grid>
+</Page>

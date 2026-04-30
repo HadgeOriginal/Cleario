@@ -1,0 +1,31 @@
+Cleario Non-Commercial License
+
+Copyright (c) 2026 HadgeOriginal
+
+Permission is granted to download, use, copy, fork, modify, and redistribute
+Cleario for non-commercial purposes only.
+
+You may:
+- use Cleario personally;
+- fork Cleario;
+- modify Cleario;
+- publish or share modified versions of Cleario for free;
+- submit pull requests or contribute changes.
+
+You may not:
+- sell Cleario or modified versions of Cleario;
+- charge for access to Cleario, builds, installers, forks, or modified versions;
+- include Cleario in a paid product, paid service, subscription, or commercial bundle;
+- use Cleario commercially without written permission from the copyright holder;
+- remove or alter copyright, license, or attribution notices;
+- use the Cleario name, logo, icons, or branding in a way that suggests your fork is the official Cleario project.
+
+Forks or modified versions must clearly state that they are unofficial and modified versions of Cleario.
+
+This license applies only to Cleario's original source code, branding, assets,
+and application package.
+
+Third-party components used by Cleario remain licensed under their own licenses.
+Nothing in this license limits the rights granted by those third-party licenses.
+
+Cleario is provided "as is", without warranty of any kind.

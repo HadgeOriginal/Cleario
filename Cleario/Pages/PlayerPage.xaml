@@ -1,0 +1,416 @@
+<Page
+    x:Class="Cleario.Pages.PlayerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:lvs="using:LibVLCSharp.Platforms.Windows"
+    xmlns:media="using:Microsoft.UI.Xaml.Media.Animation"
+    mc:Ignorable="d"
+    Background="Black">
+
+    <Page.Resources>
+        <Storyboard x:Name="LoadingLogoPulseStoryboard">
+            <DoubleAnimation Storyboard.TargetName="LoadingLogoImage"
+                             Storyboard.TargetProperty="Opacity"
+                             From="0.42"
+                             To="1"
+                             Duration="0:0:0.9"
+                             AutoReverse="True"
+                             RepeatBehavior="Forever"/>
+        </Storyboard>
+    </Page.Resources>
+
+    <Grid x:Name="RootGrid"
+          Background="Black"
+          IsTabStop="True"
+          Loaded="RootGrid_Loaded"
+          KeyDown="RootGrid_KeyDown">
+
+        <Grid x:Name="PlayerArea"
+              Background="Black"
+              SizeChanged="PlayerArea_SizeChanged">
+
+            <lvs:VideoView x:Name="VideoHost"
+                           Initialized="VideoHost_Initialized"
+                           Visibility="Collapsed"
+                           IsHitTestVisible="False" />
+
+
+            <Grid x:Name="InteractionSurface"
+                  Background="#01000000"
+                  PointerPressed="PlayerArea_PointerPressed"
+                  PointerMoved="PlayerArea_PointerMoved"
+                  PointerEntered="PlayerArea_PointerEntered"
+                  PointerExited="PlayerArea_PointerExited"
+                  Tapped="PlayerArea_Tapped"
+                  DoubleTapped="PlayerArea_DoubleTapped">
+
+                <Grid x:Name="LoadingOverlay"
+                      Background="#24000000"
+                      IsHitTestVisible="False">
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Spacing="12">
+                        <Border x:Name="LoadingLogoBackdrop"
+                                Background="Transparent"
+                                CornerRadius="22"
+                                Padding="34,24"
+                                Visibility="Collapsed"
+                                IsHitTestVisible="False">
+                            <Image x:Name="LoadingLogoImage"
+                                   Width="420"
+                                   MaxHeight="180"
+                                   Stretch="Uniform"
+                                   Visibility="Collapsed"
+                                   Opacity="0.88"
+                                   ImageFailed="LoadingLogoImage_ImageFailed"/>
+                        </Border>
+                        <ProgressRing x:Name="LoadingProgressRing"
+                                      IsActive="True"
+                                      Width="64"
+                                      Height="64"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center" />
+                        <TextBlock x:Name="LoadingStatusTextBlock"
+                                   Visibility="Collapsed"
+                                   TextAlignment="Center"
+                                   Foreground="White"
+                                   Opacity="0.82"
+                                   FontSize="15"/>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel x:Name="MessagePanel"
+                            Visibility="Collapsed"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            MaxWidth="700"
+                            Spacing="14">
+                    <TextBlock x:Name="MessageTitleTextBlock"
+                               FontSize="28"
+                               FontWeight="SemiBold"
+                               TextAlignment="Center"
+                               Foreground="White" />
+                    <TextBlock x:Name="MessageBodyTextBlock"
+                               TextWrapping="WrapWholeWords"
+                               TextAlignment="Center"
+                               Opacity="0.82"
+                               Foreground="White" />
+                    <StackPanel x:Name="MessageActionPanel"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                Spacing="12"
+                                Visibility="Collapsed">
+                        <Button x:Name="RetryPlaybackButton"
+                                Content="Retry"
+                                Click="RetryPlaybackButton_Click"
+                                ClickMode="Press"
+                                Padding="18,8"/>
+                        <Button x:Name="FallbackPlaybackButton"
+                                Content="Fallback"
+                                ClickMode="Press"
+                                Padding="18,8">
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Try MPV" Tag="MPV" Click="FallbackPlaybackMenuItem_Click"/>
+                                    <MenuFlyoutItem Text="Try LibVLC" Tag="LibVLC" Click="FallbackPlaybackMenuItem_Click"/>
+                                    <MenuFlyoutItem Text="Open in VLC" Tag="ExternalPlayer" Click="FallbackPlaybackMenuItem_Click"/>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+
+                <Border x:Name="NextEpisodePopupBorder"
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,24,128"
+                        MaxWidth="620"
+                        Background="#F4141414"
+                        BorderBrush="#44FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="18"
+                        Padding="18"
+                        PointerEntered="OverlayInteractiveRegion_PointerEntered"
+                        PointerMoved="OverlayInteractiveRegion_PointerMoved"
+                        PointerExited="OverlayInteractiveRegion_PointerExited">
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="132"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Width="132"
+                              Height="74"
+                              VerticalAlignment="Top">
+                            <Image x:Name="NextEpisodePreviewImage"
+                                   Stretch="UniformToFill"
+                                   Opacity="1"/>
+                            <Border x:Name="NextEpisodePreviewSpoilerOverlay"
+                                    Background="#D0101010"
+                                    Visibility="Collapsed">
+                                <TextBlock Text="Spoiler hidden"
+                                           FontSize="11"
+                                           Opacity="0.78"
+                                           Foreground="White"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Spacing="10">
+                            <TextBlock x:Name="NextEpisodeHeadingTextBlock"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="NextEpisodeTitleTextBlock"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       TextWrapping="WrapWholeWords"/>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Button x:Name="DismissNextEpisodeButton"
+                                        Click="DismissNextEpisodeButton_Click"
+                                        ClickMode="Press"
+                                        Padding="14,8"
+                                        Background="#FF1B1B1B"
+                                        BorderBrush="#55FFFFFF"
+                                        Foreground="White"
+                                        PointerPressed="InteractiveControl_PointerPressed">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE711;" Foreground="White"/>
+                                        <TextBlock Text="Dismiss"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="WatchNextEpisodeButton"
+                                        Click="WatchNextEpisodeButton_Click"
+                                        ClickMode="Press"
+                                        Padding="18,8"
+                                        Background="#FF2A2A2A"
+                                        BorderBrush="#66FFFFFF"
+                                        Foreground="White"
+                                        PointerPressed="InteractiveControl_PointerPressed">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE768;" Foreground="White"/>
+                                        <TextBlock Text="Watch now"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border x:Name="TopOverlay"
+                        VerticalAlignment="Top"
+                        Background="#24000000"
+                        Padding="18,16"
+                        Opacity="1"
+                        PointerEntered="OverlayInteractiveRegion_PointerEntered"
+                        PointerMoved="OverlayInteractiveRegion_PointerMoved"
+                        PointerExited="OverlayInteractiveRegion_PointerExited"
+                        >
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="BackButton"
+                                Content="← Back"
+                                Click="BackButton_Click"
+                                ClickMode="Press"
+                                Padding="14,8"
+                                Margin="0,0,16,0"
+                                PointerPressed="InteractiveControl_PointerPressed"/>
+
+                        <StackPanel x:Name="TitleInfoPanel"
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Spacing="2">
+                            <TextBlock x:Name="TitleTextBlock"
+                                       FontSize="22"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="SubtitleTextBlock"
+                                       Opacity="0.78"
+                                       Foreground="White"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border x:Name="BottomOverlay"
+                        VerticalAlignment="Bottom"
+                        Background="#24000000"
+                        Padding="18,16"
+                        Opacity="1"
+                        PointerEntered="OverlayInteractiveRegion_PointerEntered"
+                        PointerMoved="OverlayInteractiveRegion_PointerMoved"
+                        PointerExited="OverlayInteractiveRegion_PointerExited"
+                        >
+                    <StackPanel Spacing="12">
+
+                        <Grid>
+                            <Border x:Name="PreviewSeekFill"
+                                    Height="4"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Left"
+                                    Background="#66FFFFFF"
+                                    CornerRadius="2"
+                                    Width="0"
+                                    Margin="8,0,8,0"
+                                    IsHitTestVisible="False"/>
+
+                            <Slider x:Name="PositionSlider"
+                                    Minimum="0"
+                                    Maximum="1"
+                                    StepFrequency="1000"
+                                    IsThumbToolTipEnabled="False"
+                                    IsEnabled="False"
+                                    ValueChanged="PositionSlider_ValueChanged"
+                                    PointerPressed="PositionSlider_PointerPressed"
+                                    PointerReleased="PositionSlider_PointerReleased"
+                                    PointerCanceled="PositionSlider_PointerCanceled"
+                                    PointerCaptureLost="PositionSlider_PointerReleased"
+                                    PointerMoved="PositionSlider_PointerMoved"
+                                    PointerExited="PositionSlider_PointerExited"/>
+
+                            <Border x:Name="HoverTimeBorder"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Margin="0,-34,0,0"
+                                    Background="#CC111111"
+                                    CornerRadius="6"
+                                    Padding="8,4"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="HoverTimeTransform"/>
+                                </Border.RenderTransform>
+
+                                <TextBlock x:Name="HoverTimeTextBlock"
+                                           Foreground="White"/>
+                            </Border>
+                        </Grid>
+
+                        <Grid x:Name="BottomControlsRow">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button x:Name="PlayPauseButton"
+                                    ClickMode="Press"
+                                    Grid.Column="0"
+                                    Click="PlayPauseButton_Click"
+                                    Padding="12,8"
+                                    Margin="0,0,8,0"
+                                    PointerPressed="InteractiveControl_PointerPressed">
+                                <FontIcon x:Name="PlayPauseIcon"
+                                          Glyph="&#xE769;"
+                                          Foreground="White"/>
+                            </Button>
+
+                            <Button x:Name="StopButton"
+                                    ClickMode="Press"
+                                    Grid.Column="1"
+                                    Click="StopButton_Click"
+                                    Padding="12,8"
+                                    Margin="0,0,8,0"
+                                    PointerPressed="InteractiveControl_PointerPressed">
+                                <FontIcon Glyph="&#xE71A;"
+                                          Foreground="White"/>
+                            </Button>
+
+                            <Button x:Name="NextEpisodeButton"
+                                    ClickMode="Press"
+                                    Grid.Column="2"
+                                    Click="NextEpisodeButton_Click"
+                                    Padding="12,8"
+                                    Margin="0,0,8,0"
+                                    Visibility="Collapsed"
+                                    PointerPressed="InteractiveControl_PointerPressed">
+                                <FontIcon Glyph="&#xE893;"
+                                          Foreground="White"/>
+                            </Button>
+
+                            <TextBlock x:Name="TimeTextBlock"
+                                       Grid.Column="3"
+                                       VerticalAlignment="Center"
+                                       Foreground="White"
+                                       Text="00:00 / 00:00"
+                                       Margin="4,0,0,0"/>
+
+                            <StackPanel Grid.Column="4"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        Spacing="10"
+                                        Margin="16,0,0,0">
+                                <FontIcon x:Name="VolumeIcon"
+                                          Glyph="&#xE15D;"
+                                          Foreground="White"
+                                          VerticalAlignment="Center"/>
+
+                                <Slider x:Name="VolumeSlider"
+                                        Width="140"
+                                        Minimum="0"
+                                        Maximum="200"
+                                        Value="100"
+                                        StepFrequency="5"
+                                        IsThumbToolTipEnabled="False"
+                                        PointerPressed="InteractiveControl_PointerPressed"
+                                        ValueChanged="VolumeSlider_ValueChanged"/>
+                            </StackPanel>
+
+                            <Button x:Name="AudioTracksButton"
+                                    ClickMode="Press"
+                                    Grid.Column="5"
+                                    Click="AudioTracksButton_Click"
+                                    Padding="12,8"
+                                    Margin="16,0,8,0"
+                                    PointerPressed="InteractiveControl_PointerPressed">
+                                <FontIcon Glyph="&#xE189;"
+                                          Foreground="White"/>
+                            </Button>
+
+                            <Button x:Name="SubtitleTracksButton"
+                                    ClickMode="Press"
+                                    Grid.Column="6"
+                                    Click="SubtitleTracksButton_Click"
+                                    Padding="12,8"
+                                    Margin="0,0,8,0"
+                                    PointerPressed="InteractiveControl_PointerPressed">
+                                <FontIcon Glyph="&#xE8D2;"
+                                          Foreground="White"/>
+                            </Button>
+
+                            <Button x:Name="FullScreenButton"
+                                    ClickMode="Press"
+                                    Grid.Column="7"
+                                    Click="FullScreenButton_Click"
+                                    Padding="12,8"
+                                    PointerPressed="InteractiveControl_PointerPressed">
+                                <FontIcon x:Name="FullScreenIcon"
+                                          Glyph="&#xE740;"
+                                          Foreground="White"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Page>

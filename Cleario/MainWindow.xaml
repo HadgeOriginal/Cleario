@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Cleario.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Cleario">
+
+    <Grid x:Name="RootGrid"
+          IsTabStop="True"
+          AllowDrop="True"
+          DragOver="RootGrid_DragOver"
+          Drop="RootGrid_Drop"
+          KeyDown="RootGrid_KeyDown"
+          Loaded="RootGrid_Loaded">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border x:Name="SearchBarHost"
+                Grid.Row="0"
+                Background="#121212"
+                BorderBrush="#252525"
+                BorderThickness="0,0,0,1"
+                Padding="20,8,20,8">
+            <Grid MaxWidth="560"
+                  HorizontalAlignment="Center">
+                <TextBox x:Name="GlobalSearchTextBox"
+                         Height="34"
+                         MinWidth="390"
+                         PlaceholderText="Search titles..."
+                         Padding="42,5,42,0"
+                         FontSize="14"
+                         TextAlignment="Center"
+                         VerticalContentAlignment="Center"
+                         TextChanged="GlobalSearchTextBox_TextChanged"
+                         KeyDown="GlobalSearchTextBox_KeyDown"/>
+
+                <Button x:Name="GlobalSearchActionButton"
+                        Width="28"
+                        Height="28"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="0,0,10,0"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="GlobalSearchActionButton_Click">
+                    <SymbolIcon x:Name="GlobalSearchActionIcon" Symbol="Find"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <NavigationView x:Name="navView"
+                        Grid.Row="1"
+                        PaneDisplayMode="Left"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="True"
+                        ItemInvoked="NavView_ItemInvoked"
+                        Loaded="NavView_Loaded">
+
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Home" Icon="Home" Tag="HomePage" />
+                <NavigationViewItem Content="Continue Watching" Icon="Play" Tag="HistoryPage" />
+                <NavigationViewItem Content="Discover" Icon="Find" Tag="DiscoverPage" />
+                <NavigationViewItem Content="Library" Icon="Library" Tag="LibraryPage" />
+                <NavigationViewItem Content="Calendar" Icon="Calendar" Tag="CalendarPage" />
+                <NavigationViewItem Content="Addons" Icon="AllApps" Tag="AddonsPage" />
+            </NavigationView.MenuItems>
+
+            <NavigationView.Content>
+                <Frame x:Name="contentFrame" />
+            </NavigationView.Content>
+        </NavigationView>
+
+        <Frame x:Name="playerOverlayFrame"
+               Grid.RowSpan="2"
+               AllowDrop="True"
+               DragOver="RootGrid_DragOver"
+               Drop="RootGrid_Drop"
+               Visibility="Collapsed"
+               Background="Black" />
+    </Grid>
+</Window>

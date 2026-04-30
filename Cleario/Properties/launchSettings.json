@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Cleario": {
+      "commandName": "Project"
+    },
+    "Cleario (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -1,0 +1,116 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Cleario</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <ApplicationIcon>Assets\cleario.ico</ApplicationIcon>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <Nullable>enable</Nullable>
+    <Version>0.5.0</Version>
+    <AssemblyVersion>0.5.0.0</AssemblyVersion>
+    <FileVersion>0.5.0.0</FileVersion>
+    <InformationalVersion>0.5.0</InformationalVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Pages\AddonsPage.xaml" />
+    <None Remove="Pages\CalendarPage.xaml" />
+    <None Remove="Pages\DetailsPage.xaml" />
+    <None Remove="Pages\DiscoverPage.xaml" />
+    <None Remove="Pages\HomePage.xaml" />
+    <None Remove="Pages\HistoryPage.xaml" />
+    <None Remove="Pages\LibraryPage.xaml" />
+    <None Remove="Pages\SettingsPage.xaml" />
+    <None Remove="Pages\SearchPage.xaml" />
+    <None Remove="Pages\PlayerPage.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="Assets\cleario.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Players\mpv\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Remove="Players\mpv\PLACE_MPV_LIB_FILES_HERE.txt" />
+    <Content Include="Players\vlc\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Services\MpvOverlayWindow.cs" />
+    <Compile Remove="Services\MpvPlayerController.cs" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="LibVLCSharp" Version="3.9.7" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1721" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
+    <PackageReference Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" />
+  </ItemGroup>
+  <ItemGroup>
+    
+    <Page Remove="Pages\*.xaml" />
+    <Page Include="Pages\*.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+  
+  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
+
+  
+  <PropertyGroup>
+    
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+  <Import Project="Secrets\TraktSecrets.props" Condition="Exists('Secrets\TraktSecrets.props')" />
+
+  <PropertyGroup>
+    <TraktClientId Condition="'$(TraktClientId)' == ''">$(TRAKT_CLIENT_ID)</TraktClientId>
+    <TraktClientSecret Condition="'$(TraktClientSecret)' == ''">$(TRAKT_CLIENT_SECRET)</TraktClientSecret>
+  </PropertyGroup>
+
+  <Target Name="GenerateTraktCredentials" BeforeTargets="PrepareForBuild;MarkupCompilePass1;CoreCompile" Condition="'$(TraktClientId)' != '' and '$(TraktClientSecret)' != ''">
+    <MakeDir Directories="$(IntermediateOutputPath)Generated" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)Generated\TraktCredentials.g.cs" Overwrite="true" Encoding="UTF-8" Lines='namespace Cleario.Services%0A{%0A    internal static class TraktCredentials%0A    {%0A        public const string ClientId = &quot;$(TraktClientId)&quot;%3B%0A        public const string ClientSecret = &quot;$(TraktClientSecret)&quot;%3B%0A    }%0A}' />
+    <ItemGroup>
+      <Compile Remove="Services\TraktCredentials.cs" />
+      <Compile Include="$(IntermediateOutputPath)Generated\TraktCredentials.g.cs" />
+    </ItemGroup>
+  </Target>
+</Project>
