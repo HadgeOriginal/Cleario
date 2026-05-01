@@ -23,8 +23,7 @@ namespace Cleario.Services
             public string PosterUrl { get; set; } = string.Empty;
             public string FallbackPosterUrl { get; set; } = string.Empty;
             public string Year { get; set; } = string.Empty;
-            public string ImdbRating { get; set; } = string.Empty;
-            public string SourceBaseUrl { get; set; } = string.Empty;
+            public string ImdbRating { get; set; } = string.Empty;            public string SourceBaseUrl { get; set; } = string.Empty;
             public DateTime AddedUtc { get; set; } = DateTime.UtcNow;
         }
 
@@ -99,8 +98,7 @@ namespace Cleario.Services
                     existing.PosterUrl = GetPreferredPosterUrl(item, existing.PosterUrl);
                     existing.FallbackPosterUrl = GetPreferredFallbackPosterUrl(item, existing.FallbackPosterUrl);
                     existing.Year = !string.IsNullOrWhiteSpace(item.Year) ? item.Year : existing.Year;
-                    existing.ImdbRating = !string.IsNullOrWhiteSpace(item.ImdbRating) ? item.ImdbRating : existing.ImdbRating;
-                    existing.SourceBaseUrl = !string.IsNullOrWhiteSpace(item.SourceBaseUrl) ? item.SourceBaseUrl : existing.SourceBaseUrl;
+                    existing.ImdbRating = !string.IsNullOrWhiteSpace(item.ImdbRating) ? item.ImdbRating : existing.ImdbRating;                    existing.SourceBaseUrl = !string.IsNullOrWhiteSpace(item.SourceBaseUrl) ? item.SourceBaseUrl : existing.SourceBaseUrl;
                     changed = true;
                 }
 
@@ -244,8 +242,7 @@ namespace Cleario.Services
                         ? entry.FallbackPosterUrl
                         : CatalogService.PlaceholderPosterUri),
                 Year = entry.Year,
-                ImdbRating = entry.ImdbRating,
-                IsPosterLoading = true,
+                ImdbRating = entry.ImdbRating,                IsPosterLoading = true,
                 SourceBaseUrl = entry.SourceBaseUrl
             };
         }
@@ -285,8 +282,7 @@ namespace Cleario.Services
                 PosterUrl = GetPreferredPosterUrl(item, string.Empty),
                 FallbackPosterUrl = GetPreferredFallbackPosterUrl(item, string.Empty),
                 Year = item.Year,
-                ImdbRating = item.ImdbRating,
-                SourceBaseUrl = item.SourceBaseUrl,
+                ImdbRating = item.ImdbRating,                SourceBaseUrl = item.SourceBaseUrl,
                 AddedUtc = DateTime.UtcNow
             };
         }
@@ -329,8 +325,7 @@ namespace Cleario.Services
                 PosterUrl = entry.PosterUrl,
                 FallbackPosterUrl = entry.FallbackPosterUrl,
                 Year = entry.Year,
-                ImdbRating = entry.ImdbRating,
-                SourceBaseUrl = entry.SourceBaseUrl,
+                ImdbRating = entry.ImdbRating,                SourceBaseUrl = entry.SourceBaseUrl,
                 AddedUtc = entry.AddedUtc
             };
         }

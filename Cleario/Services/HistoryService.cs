@@ -28,8 +28,7 @@ namespace Cleario.Services
             public string PosterUrl { get; set; } = string.Empty;
             public string FallbackPosterUrl { get; set; } = string.Empty;
             public string Year { get; set; } = string.Empty;
-            public string ImdbRating { get; set; } = string.Empty;
-            public string SourceBaseUrl { get; set; } = string.Empty;
+            public string ImdbRating { get; set; } = string.Empty;            public string SourceBaseUrl { get; set; } = string.Empty;
             public string StreamKey { get; set; } = string.Empty;
             public string StreamDisplayName { get; set; } = string.Empty;
             public string AddonName { get; set; } = string.Empty;
@@ -246,8 +245,7 @@ namespace Cleario.Services
                         PosterUrl = PreferPoster(item),
                         FallbackPosterUrl = PreferFallbackPoster(item),
                         Year = item.Year,
-                        ImdbRating = item.ImdbRating,
-                        SourceBaseUrl = item.SourceBaseUrl
+                        ImdbRating = item.ImdbRating,                        SourceBaseUrl = item.SourceBaseUrl
                     };
                     items.Add(entry);
                 }
@@ -256,8 +254,7 @@ namespace Cleario.Services
                 entry.PosterUrl = PreferPoster(item, !string.IsNullOrWhiteSpace(stream.PosterUrl) ? stream.PosterUrl : entry.PosterUrl);
                 entry.FallbackPosterUrl = PreferFallbackPoster(item, !string.IsNullOrWhiteSpace(stream.FallbackPosterUrl) ? stream.FallbackPosterUrl : entry.FallbackPosterUrl);
                 entry.Year = !string.IsNullOrWhiteSpace(stream.Year) ? stream.Year : (!string.IsNullOrWhiteSpace(item.Year) ? item.Year : entry.Year);
-                entry.ImdbRating = !string.IsNullOrWhiteSpace(stream.ImdbRating) ? stream.ImdbRating : (!string.IsNullOrWhiteSpace(item.ImdbRating) ? item.ImdbRating : entry.ImdbRating);
-                entry.SourceBaseUrl = !string.IsNullOrWhiteSpace(item.SourceBaseUrl) ? item.SourceBaseUrl : entry.SourceBaseUrl;
+                entry.ImdbRating = !string.IsNullOrWhiteSpace(stream.ImdbRating) ? stream.ImdbRating : (!string.IsNullOrWhiteSpace(item.ImdbRating) ? item.ImdbRating : entry.ImdbRating);                entry.SourceBaseUrl = !string.IsNullOrWhiteSpace(item.SourceBaseUrl) ? item.SourceBaseUrl : entry.SourceBaseUrl;
                 entry.SeasonNumber = stream.SeasonNumber;
                 entry.EpisodeNumber = stream.EpisodeNumber;
                 entry.EpisodeTitle = stream.EpisodeTitle ?? string.Empty;
@@ -622,8 +619,7 @@ namespace Cleario.Services
                 FallbackPosterUrl = fallbackPosterUrl,
                 Poster = !string.IsNullOrWhiteSpace(posterUrl) ? posterUrl : (!string.IsNullOrWhiteSpace(fallbackPosterUrl) ? fallbackPosterUrl : CatalogService.PlaceholderPosterUri),
                 Year = entry.Year,
-                ImdbRating = entry.ImdbRating,
-                SourceBaseUrl = entry.SourceBaseUrl,
+                ImdbRating = entry.ImdbRating,                SourceBaseUrl = entry.SourceBaseUrl,
                 IsPosterLoading = true
             };
 
@@ -651,8 +647,7 @@ namespace Cleario.Services
                     PosterUrl = entry.StreamPosterUrl,
                     FallbackPosterUrl = entry.StreamFallbackPosterUrl,
                     Year = entry.Year,
-                    ImdbRating = entry.ImdbRating,
-                    ContentId = entry.Id,
+                    ImdbRating = entry.ImdbRating,                    ContentId = entry.Id,
                     SourceBaseUrl = entry.SourceBaseUrl,
                     VideoId = entry.VideoId,
                     SeasonNumber = entry.SeasonNumber,
@@ -699,8 +694,7 @@ namespace Cleario.Services
                 PosterUrl = entry.PosterUrl,
                 FallbackPosterUrl = entry.FallbackPosterUrl,
                 Year = entry.Year,
-                ImdbRating = entry.ImdbRating,
-                SourceBaseUrl = entry.SourceBaseUrl,
+                ImdbRating = entry.ImdbRating,                SourceBaseUrl = entry.SourceBaseUrl,
                 StreamKey = entry.StreamKey,
                 StreamDisplayName = entry.StreamDisplayName,
                 AddonName = entry.AddonName,
@@ -755,8 +749,7 @@ namespace Cleario.Services
                 PosterUrl = PreferPoster(item),
                 FallbackPosterUrl = PreferFallbackPoster(item),
                 Year = item.Year,
-                ImdbRating = item.ImdbRating,
-                SourceBaseUrl = item.SourceBaseUrl,
+                ImdbRating = item.ImdbRating,                SourceBaseUrl = item.SourceBaseUrl,
                 LastPlayedUtc = DateTime.UtcNow
             };
         }

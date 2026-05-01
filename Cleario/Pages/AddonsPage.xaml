@@ -26,7 +26,11 @@
 
         <ListView x:Name="AddonsListView"
                   Grid.Row="1"
-                  SelectionMode="None">
+                  SelectionMode="None"
+                  CanDragItems="True"
+                  CanReorderItems="True"
+                  AllowDrop="True"
+                  DragItemsCompleted="AddonsListView_DragItemsCompleted">
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <Border Margin="0,0,0,10"

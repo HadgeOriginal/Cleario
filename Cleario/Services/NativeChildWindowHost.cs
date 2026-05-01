@@ -38,8 +38,14 @@ namespace Cleario.Services
         private const int IDC_ARROW = 32512;
         private const int HTCLIENT = 1;
         private const int HTTRANSPARENT = -1;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTBOTTOM = 15;
+        private const int HTBOTTOMLEFT = 16;
+        private const int HTBOTTOMRIGHT = 17;
         private const int MA_ACTIVATE = 1;
-        private const int ResizeBorderPixels = 8;
+        private const uint WM_NCLBUTTONDOWN = 0x00A1;
+        private const int ResizeBorderPixels = 18;
         private const int RGN_DIFF = 4;
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -114,6 +120,15 @@ namespace Cleario.Services
         [DllImport("user32.dll")]
         private static extern IntPtr SetActiveWindow(IntPtr hWnd);
 
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SendMessageW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
         [DllImport("user32.dll", SetLastError = true)]
         private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool redraw);
 
@@ -125,6 +140,13 @@ namespace Cleario.Services
 
         [DllImport("gdi32.dll", SetLastError = true)]
         private static extern bool DeleteObject(IntPtr hObject);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT
@@ -328,12 +350,9 @@ namespace Cleario.Services
 
             try
             {
-                if (_parentHwnd != IntPtr.Zero && IsWindow(_parentHwnd))
-                {
-                    SetForegroundWindow(_parentHwnd);
-                    SetActiveWindow(_parentHwnd);
-                }
-
+                // Only move focus inside Cleario. Do not call SetForegroundWindow/SetActiveWindow here:
+                // mpv can emit mouse messages from its native child HWND while the user has switched to
+                // another app, and forcing the foreground window makes Cleario steal keyboard input.
                 RefreshChildCursorHooks();
 
                 if (_lastFocusableChildWindow != IntPtr.Zero && IsWindow(_lastFocusableChildWindow))
@@ -642,22 +661,64 @@ namespace Cleario.Services
                 : IntPtr.Zero;
         }
 
-        private bool IsPointOnParentResizeBorder(IntPtr lParam)
+        private int GetParentResizeHitTestFromScreenPoint(int x, int y)
         {
             if (_parentHwnd == IntPtr.Zero)
-                return false;
+                return HTCLIENT;
 
             try
             {
                 if (!GetWindowRect(_parentHwnd, out var rect))
-                    return false;
+                    return HTCLIENT;
 
-                var x = unchecked((short)((long)lParam & 0xFFFF));
-                var y = unchecked((short)(((long)lParam >> 16) & 0xFFFF));
+                var onLeft = x <= rect.Left + ResizeBorderPixels;
+                var onRight = x >= rect.Right - ResizeBorderPixels;
+                var onBottom = y >= rect.Bottom - ResizeBorderPixels;
 
-                return x <= rect.Left + ResizeBorderPixels
-                    || x >= rect.Right - ResizeBorderPixels
-                    || y >= rect.Bottom - ResizeBorderPixels;
+                if (onBottom && onLeft)
+                    return HTBOTTOMLEFT;
+                if (onBottom && onRight)
+                    return HTBOTTOMRIGHT;
+                if (onBottom)
+                    return HTBOTTOM;
+                if (onLeft)
+                    return HTLEFT;
+                if (onRight)
+                    return HTRIGHT;
+
+                return HTCLIENT;
+            }
+            catch
+            {
+                return HTCLIENT;
+            }
+        }
+
+        private int GetParentResizeHitTestFromNcHitTestLParam(IntPtr lParam)
+        {
+            var x = unchecked((short)((long)lParam & 0xFFFF));
+            var y = unchecked((short)(((long)lParam >> 16) & 0xFFFF));
+            return GetParentResizeHitTestFromScreenPoint(x, y);
+        }
+
+        private bool TryBeginParentResizeFromCursor()
+        {
+            if (_parentHwnd == IntPtr.Zero || !IsWindow(_parentHwnd))
+                return false;
+
+            if (!GetCursorPos(out var point))
+                return false;
+
+            var hitTest = GetParentResizeHitTestFromScreenPoint(point.X, point.Y);
+            if (hitTest == HTCLIENT || hitTest == HTTRANSPARENT)
+                return false;
+
+            try
+            {
+                ReleaseCapture();
+                var lParam = new IntPtr(((point.Y & 0xFFFF) << 16) | (point.X & 0xFFFF));
+                SendMessageW(_parentHwnd, WM_NCLBUTTONDOWN, new IntPtr(hitTest), lParam);
+                return true;
             }
             catch
             {
@@ -670,13 +731,9 @@ namespace Cleario.Services
             switch (msg)
             {
                 case WM_NCHITTEST:
-                    // The mpv child HWND fills the client area, so without this it can block the
-                    // parent WinUI window's resize hit-test strip on the left/right/bottom edges.
-                    // Let those edge hits pass through to the parent, but keep normal client hits so
-                    // mouse move/click still wake Cleario's overlay.
-                    if (IsPointOnParentResizeBorder(lParam))
-                        return new IntPtr(HTTRANSPARENT);
-
+                    // The mpv child HWND fills the client area. Keep normal client hit tests here
+                    // and explicitly forward resize drags to the parent on mouse down. Returning
+                    // HTTRANSPARENT was unreliable on the bottom resize strip with native mpv.
                     return new IntPtr(HTCLIENT);
 
                 case WM_SETCURSOR:
@@ -702,6 +759,9 @@ namespace Cleario.Services
                     break;
 
                 case WM_LBUTTONDOWN:
+                    if (TryBeginParentResizeFromCursor())
+                        return IntPtr.Zero;
+
                     FocusNative();
                     PointerActivity?.Invoke(this, EventArgs.Empty);
                     break;

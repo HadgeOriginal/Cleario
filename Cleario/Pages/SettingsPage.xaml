@@ -90,8 +90,20 @@
                                                TextWrapping="WrapWholeWords"/>
 
                                     <ToggleSwitch x:Name="ShowPosterBadgesToggle"
-                                                  Header="Show year and IMDb on poster hover"
+                                                  Header="Show poster hover info"
                                                   Toggled="ShowPosterBadgesToggle_Toggled"/>
+
+                                    <StackPanel x:Name="PosterHoverBadgeOptionsPanel"
+                                                Spacing="8"
+                                                Margin="0,4,0,0"
+                                                Visibility="Collapsed">
+                                        <ToggleSwitch x:Name="ShowPosterHoverYearToggle"
+                                                      Header="Show year"
+                                                      Toggled="PosterHoverBadgeOption_Toggled"/>
+                                        <ToggleSwitch x:Name="ShowPosterHoverImdbToggle"
+                                                      Header="Show IMDb rating"
+                                                      Toggled="PosterHoverBadgeOption_Toggled"/>
+</StackPanel>
                                 </StackPanel>
                             </Border>
 
@@ -380,6 +392,45 @@
                                     CornerRadius="12"
                                     Padding="16">
                                 <StackPanel Spacing="12">
+                                    <TextBlock Text="General"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Control the details page backdrop and metadata ratings."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <StackPanel Spacing="6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Background brightness" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="DetailsBackgroundBrightnessValueTextBlock"
+                                                       Grid.Column="1"
+                                                       Text="100%"
+                                                       Opacity="0.75"/>
+                                        </Grid>
+                                        <Slider x:Name="DetailsBackgroundBrightnessSlider"
+                                                Minimum="0"
+                                                Maximum="100"
+                                                StepFrequency="1"
+                                                ValueChanged="DetailsBackgroundBrightnessSlider_ValueChanged"/>
+                                    </StackPanel>
+
+                                    <ToggleSwitch x:Name="DetailsShowImdbToggle"
+                                                  Header="Show IMDb rating"
+                                                  Toggled="DetailsRatingToggle_Toggled"/>
+</StackPanel>
+                            </Border>
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
                                     <TextBlock Text="TV show details"
                                                FontSize="20"
                                                FontWeight="SemiBold"/>
@@ -596,10 +647,14 @@
                                        Opacity="0.75"
                                        TextWrapping="WrapWholeWords"/>
 
-                            <StackPanel x:Name="HomeCatalogsPanel"
-                                        Spacing="10"
-                                        Width="980"
-                                        HorizontalAlignment="Center"/>
+                            <ListView x:Name="HomeCatalogsListView"
+                                      Width="980"
+                                      HorizontalAlignment="Center"
+                                      SelectionMode="None"
+                                      CanDragItems="True"
+                                      CanReorderItems="True"
+                                      AllowDrop="True"
+                                      DragItemsCompleted="HomeCatalogsListView_DragItemsCompleted"/>
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>

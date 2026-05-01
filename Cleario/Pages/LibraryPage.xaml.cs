@@ -408,19 +408,23 @@ namespace Cleario.Pages
             }
         }
 
-        private async void PosterCard_PointerEntered(object sender, PointerRoutedEventArgs e)
+        private void PosterCard_PointerEntered(object sender, PointerRoutedEventArgs e)
         {
             if (sender is FrameworkElement element)
             {
-                await EnsurePosterBadgeInfoAsync(element);
+                element.Resources["PosterHoverState"] = true;
                 UpdatePosterVisualState(element, true);
+                _ = EnsurePosterBadgeInfoAsync(element);
             }
         }
 
         private void PosterCard_PointerExited(object sender, PointerRoutedEventArgs e)
         {
             if (sender is FrameworkElement element)
+            {
+                element.Resources["PosterHoverState"] = false;
                 UpdatePosterVisualState(element, false);
+            }
         }
 
         private async Task EnsurePosterBadgeInfoAsync(FrameworkElement root)
@@ -432,20 +436,40 @@ namespace Cleario.Pages
             if (root.Tag is not MetaItem item)
                 return;
 
-            if (!string.IsNullOrWhiteSpace(item.Year) && !string.IsNullOrWhiteSpace(item.ImdbRating))
+            if (!string.IsNullOrWhiteSpace(item.Year) &&
+                !string.IsNullOrWhiteSpace(item.ImdbRating))
                 return;
 
             try
             {
                 var meta = await CatalogService.GetMetaDetailsAsync(item.Type, item.Id, item.SourceBaseUrl);
                 if (string.IsNullOrWhiteSpace(item.Year))
-                    item.Year = !string.IsNullOrWhiteSpace(meta.Year) ? meta.Year : ExtractYear(meta.ReleaseInfo);
+                    item.Year = BuildYearDisplayFromReleaseInfo(!string.IsNullOrWhiteSpace(meta.ReleaseInfo) ? meta.ReleaseInfo : meta.Year);
                 if (string.IsNullOrWhiteSpace(item.ImdbRating))
                     item.ImdbRating = meta.ImdbRating;
             }
             catch
             {
             }
+
+            var stillHovered = root.Resources.TryGetValue("PosterHoverState", out var value) && value is bool hovered && hovered;
+            UpdatePosterVisualState(root, stillHovered);
+        }
+
+        private static string BuildYearDisplayFromReleaseInfo(string releaseInfo)
+        {
+            if (string.IsNullOrWhiteSpace(releaseInfo))
+                return string.Empty;
+
+            var rangeMatch = System.Text.RegularExpressions.Regex.Match(releaseInfo, @"(?<start>(?:19|20)\d{2})\s*[-–]\s*(?<end>(?:19|20)\d{2})?");
+            if (rangeMatch.Success)
+            {
+                var start = rangeMatch.Groups["start"].Value;
+                var end = rangeMatch.Groups["end"].Value;
+                return string.IsNullOrWhiteSpace(end) ? $"{start}-" : $"{start}-{end}";
+            }
+
+            return ExtractYear(releaseInfo);
         }
 
         private static string ExtractYear(string releaseInfo)
@@ -501,17 +525,23 @@ namespace Cleario.Pages
 
             var overlay = FindDescendantByName(root, "PosterInfoOverlay");
             var imdbPanel = FindDescendantByName(root, "PosterImdbPanel");
-            var yearText = FindDescendantByName(root, "PosterYearTextBlock") as TextBlock;
+var yearText = FindDescendantByName(root, "PosterYearTextBlock") as TextBlock;
             var imdbText = FindDescendantByName(root, "PosterImdbTextBlock") as TextBlock;
             if (yearText != null)
                 yearText.Text = item.Year ?? string.Empty;
+
             if (imdbText != null)
                 imdbText.Text = item.ImdbRating ?? string.Empty;
-            if (imdbPanel != null)
-                imdbPanel.Visibility = string.IsNullOrWhiteSpace(item.ImdbRating) ? Visibility.Collapsed : Visibility.Visible;
+            var showYear = SettingsManager.ShowPosterHoverYear && !string.IsNullOrWhiteSpace(item.Year);
+            var showImdb = SettingsManager.ShowPosterHoverImdbRating && !string.IsNullOrWhiteSpace(item.ImdbRating);
+            if (yearText != null)
+                yearText.Visibility = showYear ? Visibility.Visible : Visibility.Collapsed;
 
-            var hasBadges = SettingsManager.ShowPosterBadges && isHovered &&
-                            (!string.IsNullOrWhiteSpace(item.Year) || !string.IsNullOrWhiteSpace(item.ImdbRating));
+            if (imdbPanel != null)
+                imdbPanel.Visibility = showImdb ? Visibility.Visible : Visibility.Collapsed;
+            var hasBadges = SettingsManager.ShowPosterBadges &&
+                            isHovered &&
+                            (showYear || showImdb);
             if (overlay != null)
                 overlay.Visibility = hasBadges ? Visibility.Visible : Visibility.Collapsed;
 

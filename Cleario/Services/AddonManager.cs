@@ -25,6 +25,13 @@ namespace Cleario.Services
         private static readonly object _addonsGate = new();
 
         public static ObservableCollection<Addon> Addons { get; } = new();
+        public static event EventHandler? AddonsChanged;
+
+        private static void RaiseAddonsChanged()
+        {
+            CatalogService.ClearTransientCaches();
+            AddonsChanged?.Invoke(null, EventArgs.Empty);
+        }
 
         public static async Task InitializeAsync(bool forceReload = false)
         {
@@ -109,12 +116,14 @@ namespace Cleario.Services
                     addedAddon.Name = "Addon";
 
                 await SaveAsync();
+                RaiseAddonsChanged();
                 return true;
             }
             catch
             {
                 addedAddon.Name = "Addon";
                 await SaveAsync();
+                RaiseAddonsChanged();
                 return true;
             }
         }
@@ -123,6 +132,7 @@ namespace Cleario.Services
         {
             addon.IsEnabled = isEnabled;
             await SaveAsync();
+            RaiseAddonsChanged();
         }
 
         public static async Task RemoveAddonAsync(Addon addon)
@@ -134,6 +144,7 @@ namespace Cleario.Services
             }
 
             await SaveAsync();
+            RaiseAddonsChanged();
         }
 
         public static async Task MoveAddonUpAsync(Addon addon)
@@ -148,6 +159,7 @@ namespace Cleario.Services
             }
 
             await SaveAsync();
+            RaiseAddonsChanged();
         }
 
         public static async Task MoveAddonDownAsync(Addon addon)
@@ -162,6 +174,13 @@ namespace Cleario.Services
             }
 
             await SaveAsync();
+            RaiseAddonsChanged();
+        }
+
+        public static async Task SaveReorderedAddonsAsync()
+        {
+            await SaveAsync();
+            RaiseAddonsChanged();
         }
 
         public static IReadOnlyList<Addon> GetAddonsSnapshot(bool enabledOnly = false)
@@ -221,6 +240,7 @@ namespace Cleario.Services
 
             _initialized = true;
             await SaveAsync();
+            RaiseAddonsChanged();
         }
 
         public static string ExportJson()
@@ -264,6 +284,7 @@ namespace Cleario.Services
 
                 _initialized = false;
                 await InitializeAsync(forceReload: true);
+                RaiseAddonsChanged();
             }
             catch
             {

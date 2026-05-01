@@ -103,5 +103,10 @@ namespace Cleario.Pages
 
             await AddonManager.MoveAddonDownAsync(addon);
         }
+
+        private async void AddonsListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+        {
+            await AddonManager.SaveReorderedAddonsAsync();
+        }
     }
 }

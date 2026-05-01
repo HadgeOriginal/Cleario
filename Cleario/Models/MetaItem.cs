@@ -109,8 +109,6 @@ namespace Cleario.Models
                 OnPropertyChanged();
             }
         }
-
-
         public string SourceBaseUrl
         {
             get => _sourceBaseUrl;

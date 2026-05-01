@@ -139,9 +139,11 @@
                                             Padding="8,6"
                                             Background="#D0000000"
                                             CornerRadius="8"
+                                            HorizontalAlignment="Center"
                                             Visibility="Collapsed"
                                             IsHitTestVisible="False">
                                         <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Center"
                                                     Spacing="8"
                                                     VerticalAlignment="Center">
                                             <TextBlock x:Name="PosterYearTextBlock"
@@ -168,7 +170,7 @@
                                                            FontWeight="SemiBold"
                                                            VerticalAlignment="Center"/>
                                             </StackPanel>
-                                        </StackPanel>
+</StackPanel>
                                     </Border>
                                 </Grid>
                             </Border>

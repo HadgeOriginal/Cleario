@@ -21,6 +21,7 @@ namespace Cleario.Pages
         private bool _isLoading;
         private readonly List<DiscoverService.DiscoverCatalogDefinition> _catalogs = new();
         private PosterSizeMode _lastAppliedPosterSize = SettingsManager.PosterSize;
+        private string _lastHomeCatalogSettingsSignature = string.Empty;
         private bool _suppressNextContinueCardClick;
         private StackPanel? _continueWatchingSection;
         private StackPanel? _continueWatchingRowPanel;
@@ -28,6 +29,11 @@ namespace Cleario.Pages
         private int _homeLoadVersion;
         private bool _continueWatchingRefreshInProgress;
         private int _continueWatchingSectionVersion;
+        private static readonly object _homeCatalogPreviewCacheLock = new();
+        private static string _homeCatalogPreviewCacheSignature = string.Empty;
+        private static PosterSizeMode _homeCatalogPreviewCachePosterSize = SettingsManager.PosterSize;
+        private static int _homeCatalogPreviewCacheVisiblePosterCount;
+        private static List<CatalogPreviewData> _homeCatalogPreviewCache = new();
 
         private sealed class CatalogPreviewData
         {
@@ -47,7 +53,7 @@ namespace Cleario.Pages
 
         private async void HomePage_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (_catalogs.Count == 0 || _isLoading)
+            if (_catalogs.Count == 0 || _isLoading || !SettingsManager.SaveMemory)
                 return;
 
             if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 80)
@@ -75,7 +81,11 @@ namespace Cleario.Pages
                 return;
             }
 
-            DispatcherQueue.TryEnqueue(async () => await RefreshContinueWatchingSectionAsync());
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                await RefreshContinueWatchingSectionAsync();
+                await RefreshVisiblePosterWatchStatesAsync();
+            });
             await Task.CompletedTask;
         }
 
@@ -85,11 +95,46 @@ namespace Cleario.Pages
 
             await SettingsManager.InitializeAsync();
             var posterSizeChanged = _lastAppliedPosterSize != SettingsManager.PosterSize;
+            var homeCatalogSettingsChanged = !string.Equals(_lastHomeCatalogSettingsSignature, BuildHomeCatalogSettingsSignature(), StringComparison.OrdinalIgnoreCase);
 
-            if (_catalogs.Count == 0 || posterSizeChanged || SettingsManager.SaveMemory)
+            if (_catalogs.Count == 0 || posterSizeChanged || homeCatalogSettingsChanged || SettingsManager.SaveMemory)
                 await LoadHomeAsync(forceReload: true);
             else
+            {
                 await RefreshContinueWatchingSectionAsync();
+                await RefreshVisiblePosterWatchStatesAsync();
+            }
+        }
+
+        private static string BuildHomeCatalogSettingsSignature()
+        {
+            var order = SettingsManager.HomeCatalogOrder == null ? string.Empty : string.Join("|", SettingsManager.HomeCatalogOrder);
+            var disabled = SettingsManager.HomeCatalogDisabled == null ? string.Empty : string.Join("|", SettingsManager.HomeCatalogDisabled.OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+            return $"{order}::{disabled}";
+        }
+
+        private async Task RefreshVisiblePosterWatchStatesAsync()
+        {
+            foreach (var refs in EnumeratePosterCardRefs(SectionsHost).ToList())
+            {
+                refs.Item.IsWatched = await HistoryService.IsItemWatchedAsync(refs.Item);
+                UpdatePosterCardVisualState(refs, false);
+            }
+        }
+
+        private static IEnumerable<PosterCardVisualRefs> EnumeratePosterCardRefs(DependencyObject? root)
+        {
+            if (root == null)
+                yield break;
+
+            if (root is FrameworkElement { Tag: PosterCardVisualRefs refs })
+                yield return refs;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                foreach (var nested in EnumeratePosterCardRefs(VisualTreeHelper.GetChild(root, i)))
+                    yield return nested;
+            }
         }
 
         private async Task LoadHomeAsync(bool forceReload)
@@ -107,7 +152,12 @@ namespace Cleario.Pages
                 await SettingsManager.InitializeAsync(forceReload);
                 NavigationCacheMode = SettingsManager.SaveMemory ? NavigationCacheMode.Disabled : NavigationCacheMode.Required;
                 _lastAppliedPosterSize = SettingsManager.PosterSize;
+                _lastHomeCatalogSettingsSignature = BuildHomeCatalogSettingsSignature();
                 await AddonManager.InitializeAsync(forceReload);
+
+                var visiblePosterCount = GetVisiblePosterCount();
+                if (await TryRestoreCatalogSectionsFromCacheAsync(_lastHomeCatalogSettingsSignature, visiblePosterCount))
+                    return;
 
                 var catalogs = await DiscoverService.GetDiscoverCatalogsAsync();
                 _catalogs.Clear();
@@ -117,7 +167,6 @@ namespace Cleario.Pages
                 await AddContinueWatchingSectionAsync();
                 EnsureSingleContinueWatchingSection();
 
-                var visiblePosterCount = GetVisiblePosterCount();
                 var previewTasks = _catalogs
                     .Select(catalog => LoadCatalogPreviewAsync(catalog, visiblePosterCount))
                     .ToList();
@@ -158,6 +207,7 @@ namespace Cleario.Pages
                     }
                 }
 
+                SaveCatalogSectionsToCache(_lastHomeCatalogSettingsSignature, visiblePosterCount, previews);
                 EnsureSingleContinueWatchingSection();
 
                 if (!addedAnyCatalog && _continueWatchingSection == null)
@@ -173,6 +223,73 @@ namespace Cleario.Pages
             {
                 LoadingPanel.Visibility = Visibility.Collapsed;
                 _isLoading = false;
+            }
+        }
+
+        private async Task<bool> TryRestoreCatalogSectionsFromCacheAsync(string signature, int visiblePosterCount)
+        {
+            if (SettingsManager.SaveMemory)
+                return false;
+
+            List<CatalogPreviewData> cachedPreviews;
+            lock (_homeCatalogPreviewCacheLock)
+            {
+                if (_homeCatalogPreviewCache.Count == 0 ||
+                    !string.Equals(_homeCatalogPreviewCacheSignature, signature, StringComparison.OrdinalIgnoreCase) ||
+                    _homeCatalogPreviewCachePosterSize != SettingsManager.PosterSize ||
+                    _homeCatalogPreviewCacheVisiblePosterCount != visiblePosterCount)
+                {
+                    return false;
+                }
+
+                cachedPreviews = _homeCatalogPreviewCache
+                    .Select(preview => new CatalogPreviewData
+                    {
+                        Catalog = preview.Catalog,
+                        Items = preview.Items.ToList()
+                    })
+                    .ToList();
+            }
+
+            _catalogs.Clear();
+            _catalogs.AddRange(cachedPreviews.Select(preview => preview.Catalog));
+
+            await AddContinueWatchingSectionAsync();
+            EnsureSingleContinueWatchingSection();
+
+            foreach (var preview in cachedPreviews)
+            {
+                if (preview.Items.Count == 0)
+                    continue;
+
+                AddCatalogSection(preview.Catalog, preview.Items);
+                EnsureSingleContinueWatchingSection();
+            }
+
+            EnsureSingleContinueWatchingSection();
+            return cachedPreviews.Count > 0 || _continueWatchingSection != null;
+        }
+
+        private static void SaveCatalogSectionsToCache(string signature, int visiblePosterCount, IEnumerable<CatalogPreviewData?> previews)
+        {
+            if (SettingsManager.SaveMemory)
+                return;
+
+            var cachedPreviews = previews
+                .Where(preview => preview != null && preview.Items.Count > 0)
+                .Select(preview => new CatalogPreviewData
+                {
+                    Catalog = preview!.Catalog,
+                    Items = preview.Items.ToList()
+                })
+                .ToList();
+
+            lock (_homeCatalogPreviewCacheLock)
+            {
+                _homeCatalogPreviewCacheSignature = signature;
+                _homeCatalogPreviewCachePosterSize = SettingsManager.PosterSize;
+                _homeCatalogPreviewCacheVisiblePosterCount = visiblePosterCount;
+                _homeCatalogPreviewCache = cachedPreviews;
             }
         }
 
@@ -437,7 +554,7 @@ namespace Cleario.Pages
                 Visibility = Visibility.Collapsed,
                 IsHitTestVisible = false
             };
-            var overlayRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var overlayRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
             var yearText = new TextBlock { Foreground = new SolidColorBrush(Microsoft.UI.Colors.White), FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
             var imdbPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
             imdbPanel.Children.Add(new Border
@@ -703,13 +820,14 @@ namespace Cleario.Pages
             {
                 VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(8),
-                Padding = new Thickness(8, 6, 8, 6),
+                Padding = new Thickness(10, 6, 10, 6),
                 Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0xD0, 0, 0, 0)),
                 CornerRadius = new CornerRadius(8),
+                HorizontalAlignment = HorizontalAlignment.Center,
                 Visibility = Visibility.Collapsed,
                 IsHitTestVisible = false
             };
-            var overlayRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            var overlayRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
             var yearText = new TextBlock { Foreground = new SolidColorBrush(Microsoft.UI.Colors.White), FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
             var imdbPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
             imdbPanel.Children.Add(new Border
@@ -866,40 +984,64 @@ namespace Cleario.Pages
             UpdatePosterCardVisualState(refs, false);
         }
 
-        private async void PosterCardRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
+        private void PosterCardRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
         {
             if (sender is not Grid root || root.Tag is not PosterCardVisualRefs refs)
                 return;
 
-            await EnsurePosterBadgeInfoAsync(refs.Item);
+            refs.IsHovered = true;
             UpdatePosterCardVisualState(refs, true);
+            _ = EnsurePosterBadgeInfoAsync(refs);
         }
 
         private void PosterCardRoot_PointerExited(object sender, PointerRoutedEventArgs e)
         {
             if (sender is Grid root && root.Tag is PosterCardVisualRefs refs)
+            {
+                refs.IsHovered = false;
                 UpdatePosterCardVisualState(refs, false);
+            }
         }
 
-        private async Task EnsurePosterBadgeInfoAsync(MetaItem item)
+        private async Task EnsurePosterBadgeInfoAsync(PosterCardVisualRefs refs)
         {
+            var item = refs.Item;
             await SettingsManager.InitializeAsync();
             if (!SettingsManager.ShowPosterBadges)
                 return;
-            if (!string.IsNullOrWhiteSpace(item.Year) && !string.IsNullOrWhiteSpace(item.ImdbRating))
+            if (!string.IsNullOrWhiteSpace(item.Year) &&
+                !string.IsNullOrWhiteSpace(item.ImdbRating))
                 return;
 
             try
             {
                 var meta = await CatalogService.GetMetaDetailsAsync(item.Type, item.Id, item.SourceBaseUrl);
                 if (string.IsNullOrWhiteSpace(item.Year))
-                    item.Year = !string.IsNullOrWhiteSpace(meta.Year) ? meta.Year : ExtractYear(meta.ReleaseInfo);
+                    item.Year = BuildYearDisplayFromReleaseInfo(!string.IsNullOrWhiteSpace(meta.ReleaseInfo) ? meta.ReleaseInfo : meta.Year);
                 if (string.IsNullOrWhiteSpace(item.ImdbRating))
                     item.ImdbRating = meta.ImdbRating;
             }
             catch
             {
             }
+
+            UpdatePosterCardVisualState(refs, refs.IsHovered);
+        }
+
+        private static string BuildYearDisplayFromReleaseInfo(string releaseInfo)
+        {
+            if (string.IsNullOrWhiteSpace(releaseInfo))
+                return string.Empty;
+
+            var rangeMatch = System.Text.RegularExpressions.Regex.Match(releaseInfo, @"(?<start>(?:19|20)\d{2})\s*[-–]\s*(?<end>(?:19|20)\d{2})?");
+            if (rangeMatch.Success)
+            {
+                var start = rangeMatch.Groups["start"].Value;
+                var end = rangeMatch.Groups["end"].Value;
+                return string.IsNullOrWhiteSpace(end) ? $"{start}-" : $"{start}-{end}";
+            }
+
+            return ExtractYear(releaseInfo);
         }
 
         private static string ExtractYear(string releaseInfo)
@@ -933,9 +1075,14 @@ namespace Cleario.Pages
             refs.Shimmer.Visibility = hasLoadedPoster ? Visibility.Collapsed : Visibility.Visible;
             refs.YearText.Text = refs.Item.Year ?? string.Empty;
             refs.ImdbText.Text = refs.Item.ImdbRating ?? string.Empty;
-            refs.ImdbPanel.Visibility = string.IsNullOrWhiteSpace(refs.Item.ImdbRating) ? Visibility.Collapsed : Visibility.Visible;
+
+            var showYear = SettingsManager.ShowPosterHoverYear && !string.IsNullOrWhiteSpace(refs.Item.Year);
+            var showImdb = SettingsManager.ShowPosterHoverImdbRating && !string.IsNullOrWhiteSpace(refs.Item.ImdbRating);
+
+            refs.YearText.Visibility = showYear ? Visibility.Visible : Visibility.Collapsed;
+            refs.ImdbPanel.Visibility = showImdb ? Visibility.Visible : Visibility.Collapsed;
             refs.Overlay.Margin = refs.PushOverlayAboveProgress ? new Thickness(8, 8, 8, 26) : new Thickness(8);
-            refs.Overlay.Visibility = SettingsManager.ShowPosterBadges && isHovered && (!string.IsNullOrWhiteSpace(refs.Item.Year) || !string.IsNullOrWhiteSpace(refs.Item.ImdbRating)) ? Visibility.Visible : Visibility.Collapsed;
+            refs.Overlay.Visibility = SettingsManager.ShowPosterBadges && isHovered && (showYear || showImdb) ? Visibility.Visible : Visibility.Collapsed;
             if (refs.PlayButton != null)
                 refs.PlayButton.Visibility = isHovered ? Visibility.Visible : Visibility.Collapsed;
             if (refs.WatchedBadge != null)
@@ -1239,13 +1386,14 @@ namespace Cleario.Pages
             public TextBlock YearText { get; }
             public StackPanel ImdbPanel { get; }
             public TextBlock ImdbText { get; }
-            public ScaleTransform Scale { get; }
+public ScaleTransform Scale { get; }
             public FrameworkElement Button { get; }
             public FrameworkElement? PlayButton { get; }
             public FrameworkElement? WatchedBadge { get; }
             public bool PushOverlayAboveProgress { get; }
             public FrameworkElement? CardContainer { get; }
             public HistoryService.ContinueWatchingItem? ContinueWatchingEntry { get; }
+            public bool IsHovered { get; set; }
 
             public PosterCardVisualRefs(MetaItem item, Grid root, Image image, Grid shimmer, Border overlay, TextBlock yearText, StackPanel imdbPanel, TextBlock imdbText, ScaleTransform scale, FrameworkElement button, FrameworkElement? playButton, FrameworkElement? watchedBadge, bool pushOverlayAboveProgress, FrameworkElement? cardContainer, HistoryService.ContinueWatchingItem? continueWatchingEntry)
             {
@@ -1257,7 +1405,7 @@ namespace Cleario.Pages
                 YearText = yearText;
                 ImdbPanel = imdbPanel;
                 ImdbText = imdbText;
-                Scale = scale;
+Scale = scale;
                 Button = button;
                 PlayButton = playButton;
                 WatchedBadge = watchedBadge;

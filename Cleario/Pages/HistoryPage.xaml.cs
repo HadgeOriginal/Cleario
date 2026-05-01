@@ -93,8 +93,7 @@ namespace Cleario.Pages
                     FallbackPosterUrl = continueItem.Item.FallbackPosterUrl,
                     SourceBaseUrl = continueItem.Item.SourceBaseUrl,
                     Year = continueItem.Item.Year,
-                    ImdbRating = continueItem.Item.ImdbRating,
-                    AddonName = continueItem.Stream.AddonName,
+                    ImdbRating = continueItem.Item.ImdbRating,                    AddonName = continueItem.Stream.AddonName,
                     StreamDisplayName = continueItem.Stream.DisplayName,
                     Description = continueItem.Stream.Description,
                     DirectUrl = continueItem.Stream.DirectUrl,
@@ -165,19 +164,23 @@ namespace Cleario.Pages
                 UpdatePosterVisualState(root, false);
         }
 
-        private async void PosterRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
+        private void PosterRoot_PointerEntered(object sender, PointerRoutedEventArgs e)
         {
             if (sender is FrameworkElement element)
             {
-                await EnsurePosterBadgeInfoAsync(element);
+                element.Resources["PosterHoverState"] = true;
                 UpdatePosterVisualState(element, true);
+                _ = EnsurePosterBadgeInfoAsync(element);
             }
         }
 
         private void PosterRoot_PointerExited(object sender, PointerRoutedEventArgs e)
         {
             if (sender is FrameworkElement element)
+            {
+                element.Resources["PosterHoverState"] = false;
                 UpdatePosterVisualState(element, false);
+            }
         }
 
         private async Task EnsurePosterBadgeInfoAsync(FrameworkElement root)
@@ -190,7 +193,8 @@ namespace Cleario.Pages
                 return;
 
             var item = card.Item;
-            if (!string.IsNullOrWhiteSpace(item.Year) && !string.IsNullOrWhiteSpace(item.ImdbRating))
+            if (!string.IsNullOrWhiteSpace(item.Year) &&
+                !string.IsNullOrWhiteSpace(item.ImdbRating))
                 return;
 
             try
@@ -198,7 +202,7 @@ namespace Cleario.Pages
                 var meta = await CatalogService.GetMetaDetailsAsync(item.Type, item.Id, item.SourceBaseUrl);
 
                 if (string.IsNullOrWhiteSpace(item.Year))
-                    item.Year = !string.IsNullOrWhiteSpace(meta.Year) ? meta.Year : ExtractYear(meta.ReleaseInfo);
+                    item.Year = BuildYearDisplayFromReleaseInfo(!string.IsNullOrWhiteSpace(meta.ReleaseInfo) ? meta.ReleaseInfo : meta.Year);
 
                 if (string.IsNullOrWhiteSpace(item.ImdbRating))
                     item.ImdbRating = meta.ImdbRating;
@@ -206,6 +210,25 @@ namespace Cleario.Pages
             catch
             {
             }
+
+            var stillHovered = root.Resources.TryGetValue("PosterHoverState", out var value) && value is bool hovered && hovered;
+            UpdatePosterVisualState(root, stillHovered);
+        }
+
+        private static string BuildYearDisplayFromReleaseInfo(string releaseInfo)
+        {
+            if (string.IsNullOrWhiteSpace(releaseInfo))
+                return string.Empty;
+
+            var rangeMatch = System.Text.RegularExpressions.Regex.Match(releaseInfo, @"(?<start>(?:19|20)\d{2})\s*[-–]\s*(?<end>(?:19|20)\d{2})?");
+            if (rangeMatch.Success)
+            {
+                var start = rangeMatch.Groups["start"].Value;
+                var end = rangeMatch.Groups["end"].Value;
+                return string.IsNullOrWhiteSpace(end) ? $"{start}-" : $"{start}-{end}";
+            }
+
+            return ExtractYear(releaseInfo);
         }
 
         private static string ExtractYear(string releaseInfo)
@@ -253,19 +276,22 @@ namespace Cleario.Pages
             if (watchedBadge != null)
                 watchedBadge.Visibility = item.IsWatched ? Visibility.Visible : Visibility.Collapsed;
 
-            if (FindDescendantByName(root, "PosterYearTextBlock") is TextBlock yearText)
+            var yearText = FindDescendantByName(root, "PosterYearTextBlock") as TextBlock;
+            var imdbText = FindDescendantByName(root, "PosterImdbTextBlock") as TextBlock;
+var imdbPanel = FindDescendantByName(root, "PosterImdbPanel");
+            if (yearText != null)
                 yearText.Text = item.Year ?? string.Empty;
-
-            if (FindDescendantByName(root, "PosterImdbTextBlock") is TextBlock imdbText)
+            if (imdbText != null)
                 imdbText.Text = item.ImdbRating ?? string.Empty;
-
-            var imdbPanel = FindDescendantByName(root, "PosterImdbPanel");
+            var showYear = SettingsManager.ShowPosterHoverYear && !string.IsNullOrWhiteSpace(item.Year);
+            var showImdb = SettingsManager.ShowPosterHoverImdbRating && !string.IsNullOrWhiteSpace(item.ImdbRating);
+            if (yearText != null)
+                yearText.Visibility = showYear ? Visibility.Visible : Visibility.Collapsed;
             if (imdbPanel != null)
-                imdbPanel.Visibility = string.IsNullOrWhiteSpace(item.ImdbRating) ? Visibility.Collapsed : Visibility.Visible;
-
+                imdbPanel.Visibility = showImdb ? Visibility.Visible : Visibility.Collapsed;
             var hasBadges = SettingsManager.ShowPosterBadges &&
                             isHovered &&
-                            (!string.IsNullOrWhiteSpace(item.Year) || !string.IsNullOrWhiteSpace(item.ImdbRating));
+                            (showYear || showImdb);
 
             var overlay = FindDescendantByName(root, "PosterInfoOverlay");
             if (overlay != null)
@@ -376,8 +402,7 @@ namespace Cleario.Pages
                 PosterUrl = card.Entry.StreamPosterUrl,
                 FallbackPosterUrl = card.Entry.StreamFallbackPosterUrl,
                 Year = card.Entry.Year,
-                ImdbRating = card.Entry.ImdbRating,
-                ContentId = card.Entry.Id,
+                ImdbRating = card.Entry.ImdbRating,                ContentId = card.Entry.Id,
                 SourceBaseUrl = card.Entry.SourceBaseUrl,
                 VideoId = card.Entry.VideoId,
                 SeasonNumber = card.Entry.SeasonNumber,

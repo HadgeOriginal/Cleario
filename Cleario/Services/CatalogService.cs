@@ -32,7 +32,6 @@ namespace Cleario.Services
         private static readonly object _metadataBaseUrlsCacheLock = new();
         private static string _metadataBaseUrlsSignature = string.Empty;
         private static List<string> _metadataBaseUrlsCache = new();
-
         private sealed class ManifestCacheEntry
         {
             public string Json { get; init; } = string.Empty;
@@ -347,8 +346,7 @@ namespace Cleario.Services
             public string PosterUrl { get; set; } = string.Empty;
             public string FallbackPosterUrl { get; set; } = string.Empty;
             public string Year { get; set; } = string.Empty;
-            public string ImdbRating { get; set; } = string.Empty;
-            public string ContentId { get; set; } = string.Empty;
+            public string ImdbRating { get; set; } = string.Empty;            public string ContentId { get; set; } = string.Empty;
             public string SourceBaseUrl { get; set; } = string.Empty;
             public string VideoId { get; set; } = string.Empty;
             public int? SeasonNumber { get; set; }
@@ -1269,6 +1267,7 @@ namespace Cleario.Services
             return string.Empty;
         }
 
+
         private static string ParseRuntime(JsonElement meta)
         {
             if (meta.TryGetProperty("runtime", out var runtimeProp))
@@ -1330,8 +1329,7 @@ namespace Cleario.Services
                 Description = details.Description,
                 ReleaseInfo = details.ReleaseInfo,
                 Year = details.Year,
-                ImdbRating = details.ImdbRating,
-                Runtime = details.Runtime,
+                ImdbRating = details.ImdbRating,                Runtime = details.Runtime,
                 Genres = details.Genres,
                 Cast = details.Cast,
                 Directors = details.Directors
@@ -1798,8 +1796,7 @@ namespace Cleario.Services
                     ReleaseInfo = meta.TryGetProperty("releaseInfo", out var releaseInfoProp)
                         ? releaseInfoProp.GetString() ?? string.Empty
                         : string.Empty,
-                    ImdbRating = ParseImdbRating(meta),
-                    Runtime = ParseRuntime(meta),
+                    ImdbRating = ParseImdbRating(meta),                    Runtime = ParseRuntime(meta),
                     Genres = ParseJoinedArray(meta, "genres", 5),
                     Cast = ParseJoinedArray(meta, "cast", 6),
                     Directors = ParseJoinedArray(meta, "director", 4)
@@ -1827,8 +1824,7 @@ namespace Cleario.Services
                    string.IsNullOrWhiteSpace(details.LogoUrl) &&
                    string.IsNullOrWhiteSpace(details.ReleaseInfo) &&
                    string.IsNullOrWhiteSpace(details.Year) &&
-                   string.IsNullOrWhiteSpace(details.ImdbRating) &&
-                   string.IsNullOrWhiteSpace(details.Runtime) &&
+                   string.IsNullOrWhiteSpace(details.ImdbRating) &&                   string.IsNullOrWhiteSpace(details.Runtime) &&
                    string.IsNullOrWhiteSpace(details.Genres) &&
                    string.IsNullOrWhiteSpace(details.Cast) &&
                    string.IsNullOrWhiteSpace(details.Directors);

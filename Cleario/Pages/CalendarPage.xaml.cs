@@ -99,6 +99,10 @@ namespace Cleario.Pages
         private readonly ObservableCollection<SidebarEntryViewModel> _sidebarItems = new();
         private DateTime _displayMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
         private DateTime _activeDate = DateTime.Today.Date;
+        private DateTime _loadedDate = DateTime.MinValue;
+        private string _lastLibrarySignature = string.Empty;
+        private bool _calendarLoaded;
+        private bool _calendarNeedsReload;
         private SidebarEntryViewModel? _selectedSidebarItem;
         private bool _ignoreSidebarSelectionChanged;
 
@@ -107,17 +111,61 @@ namespace Cleario.Pages
             InitializeComponent();
             NavigationCacheMode = NavigationCacheMode.Required;
             UpcomingListView.ItemsSource = _sidebarItems;
+            Loaded += CalendarPage_Loaded;
+            Unloaded += CalendarPage_Unloaded;
+        }
+
+        private void CalendarPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            LibraryService.LibraryChanged -= LibraryService_LibraryChanged;
+            LibraryService.LibraryChanged += LibraryService_LibraryChanged;
+        }
+
+        private void CalendarPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            LibraryService.LibraryChanged -= LibraryService_LibraryChanged;
+        }
+
+        private void LibraryService_LibraryChanged(object? sender, EventArgs e)
+        {
+            _calendarNeedsReload = true;
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            _activeDate = DateTime.Today.Date;
+
+            await SettingsManager.InitializeAsync();
+            NavigationCacheMode = SettingsManager.SaveMemory ? NavigationCacheMode.Disabled : NavigationCacheMode.Required;
+
+            var today = DateTime.Today.Date;
+            var entries = await LibraryService.GetEntriesAsync(forceReload: false);
+            var librarySignature = BuildLibrarySignature(entries);
+            var shouldReload = !_calendarLoaded
+                || SettingsManager.SaveMemory
+                || _calendarNeedsReload
+                || _loadedDate.Date != today
+                || !string.Equals(_lastLibrarySignature, librarySignature, StringComparison.Ordinal);
+
+            _activeDate = today;
             _displayMonth = new DateTime(_activeDate.Year, _activeDate.Month, 1);
-            await LoadCalendarAsync();
+
+            if (shouldReload)
+                await LoadCalendarAsync(entries, librarySignature);
+            else
+                RefreshMonth();
         }
 
-        private async Task LoadCalendarAsync()
+        private static string BuildLibrarySignature(IEnumerable<LibraryService.LibraryEntry> entries)
+        {
+            return string.Join("\n", entries
+                .OrderBy(x => x.Type, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.SourceBaseUrl, StringComparer.OrdinalIgnoreCase)
+                .Select(x => $"{x.Type}|{x.Id}|{x.SourceBaseUrl}|{x.Name}"));
+        }
+
+        private async Task LoadCalendarAsync(IReadOnlyList<LibraryService.LibraryEntry>? cachedEntries = null, string? cachedSignature = null)
         {
             LoadingPanel.Visibility = Visibility.Visible;
             EmptyTextBlock.Visibility = Visibility.Collapsed;
@@ -128,7 +176,10 @@ namespace Cleario.Pages
                 _allEvents.Clear();
                 _selectedSidebarItem = null;
 
-                var entries = await LibraryService.GetEntriesAsync(forceReload: true);
+                var entries = cachedEntries ?? await LibraryService.GetEntriesAsync(forceReload: true);
+                _calendarNeedsReload = false;
+                _loadedDate = DateTime.Today.Date;
+                _lastLibrarySignature = cachedSignature ?? BuildLibrarySignature(entries);
                 var libraryItems = entries.Select(LibraryService.ToMetaItem).ToList();
 
                 var tasks = libraryItems.Select(async item =>
@@ -182,6 +233,8 @@ namespace Cleario.Pages
 
                 _allEvents.Clear();
                 _allEvents.AddRange(distinct);
+
+                _calendarLoaded = true;
 
                 if (_allEvents.Count == 0)
                 {

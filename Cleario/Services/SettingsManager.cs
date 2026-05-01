@@ -57,6 +57,8 @@ namespace Cleario.Services
         public static bool CacheImages { get; set; } = false;
         public static int CacheLimitGb { get; set; } = 2;
         public static bool ShowPosterBadges { get; set; } = true;
+        public static bool ShowPosterHoverYear { get; set; } = true;
+        public static bool ShowPosterHoverImdbRating { get; set; } = true;
         public static PosterSizeMode PosterSize { get; set; } = PosterSizeMode.Default;
         public static bool PlayerSingleClickPlayPause { get; set; } = true;
         public static bool PlayerDoubleClickFullScreen { get; set; } = true;
@@ -71,6 +73,8 @@ namespace Cleario.Services
         public static string PreferredSubtitleLanguage { get; set; } = "English";
         public static bool DisableSubtitlesByDefault { get; set; } = false;
         public static DetailsSeriesViewMode DetailsSeriesView { get; set; } = DetailsSeriesViewMode.Full;
+        public static int DetailsBackgroundBrightnessPercent { get; set; } = 100;
+        public static bool DetailsShowImdbRating { get; set; } = true;
         public static bool DisableSpoilers { get; set; } = false;
         public static bool EnableNextEpisodePopup { get; set; } = true;
         public static int NextEpisodePopupSeconds { get; set; } = 30;
@@ -131,6 +135,8 @@ namespace Cleario.Services
                     CacheImages = CacheImages,
                     CacheLimitGb = CacheLimitGb,
                     ShowPosterBadges = ShowPosterBadges,
+                    ShowPosterHoverYear = ShowPosterHoverYear,
+                    ShowPosterHoverImdbRating = ShowPosterHoverImdbRating,
                     PosterSize = PosterSize,
                     PlayerSingleClickPlayPause = PlayerSingleClickPlayPause,
                     PlayerDoubleClickFullScreen = PlayerDoubleClickFullScreen,
@@ -145,6 +151,8 @@ namespace Cleario.Services
                     PreferredSubtitleLanguage = PreferredSubtitleLanguage,
                     DisableSubtitlesByDefault = DisableSubtitlesByDefault,
                     DetailsSeriesView = DetailsSeriesView,
+                    DetailsBackgroundBrightnessPercent = DetailsBackgroundBrightnessPercent,
+                    DetailsShowImdbRating = DetailsShowImdbRating,
                     DisableSpoilers = DisableSpoilers,
                     EnableNextEpisodePopup = EnableNextEpisodePopup,
                     NextEpisodePopupSeconds = NextEpisodePopupSeconds,
@@ -189,7 +197,8 @@ namespace Cleario.Services
                 CacheImages = CacheImages,
                 CacheLimitGb = CacheLimitGb,
                 ShowPosterBadges = ShowPosterBadges,
-                PosterSize = PosterSize,
+                ShowPosterHoverYear = ShowPosterHoverYear,
+                ShowPosterHoverImdbRating = ShowPosterHoverImdbRating,                PosterSize = PosterSize,
                 PlayerSingleClickPlayPause = PlayerSingleClickPlayPause,
                 PlayerDoubleClickFullScreen = PlayerDoubleClickFullScreen,
                     PlaybackEngine = PlaybackEngine,
@@ -203,6 +212,8 @@ namespace Cleario.Services
                 PreferredSubtitleLanguage = PreferredSubtitleLanguage,
                 DisableSubtitlesByDefault = DisableSubtitlesByDefault,
                 DetailsSeriesView = DetailsSeriesView,
+                DetailsBackgroundBrightnessPercent = DetailsBackgroundBrightnessPercent,
+                DetailsShowImdbRating = DetailsShowImdbRating,
                 DisableSpoilers = DisableSpoilers,
                 EnableNextEpisodePopup = EnableNextEpisodePopup,
                 NextEpisodePopupSeconds = NextEpisodePopupSeconds,
@@ -297,6 +308,8 @@ namespace Cleario.Services
                     CacheImages = CacheImages,
                     CacheLimitGb = CacheLimitGb,
                     ShowPosterBadges = ShowPosterBadges,
+                    ShowPosterHoverYear = ShowPosterHoverYear,
+                    ShowPosterHoverImdbRating = ShowPosterHoverImdbRating,
                     PosterSize = PosterSize,
                     PlayerSingleClickPlayPause = PlayerSingleClickPlayPause,
                     PlayerDoubleClickFullScreen = PlayerDoubleClickFullScreen,
@@ -311,6 +324,8 @@ namespace Cleario.Services
                     PreferredSubtitleLanguage = PreferredSubtitleLanguage,
                     DisableSubtitlesByDefault = DisableSubtitlesByDefault,
                     DetailsSeriesView = DetailsSeriesView,
+                    DetailsBackgroundBrightnessPercent = DetailsBackgroundBrightnessPercent,
+                    DetailsShowImdbRating = DetailsShowImdbRating,
                     DisableSpoilers = DisableSpoilers,
                     EnableNextEpisodePopup = EnableNextEpisodePopup,
                     NextEpisodePopupSeconds = NextEpisodePopupSeconds,
@@ -353,7 +368,8 @@ namespace Cleario.Services
             CacheImages = false;
             CacheLimitGb = 2;
             ShowPosterBadges = true;
-            PosterSize = PosterSizeMode.Default;
+            ShowPosterHoverYear = true;
+            ShowPosterHoverImdbRating = true;            PosterSize = PosterSizeMode.Default;
             PlayerSingleClickPlayPause = true;
             PlayerDoubleClickFullScreen = true;
             PlaybackEngine = PlaybackEngineMode.MPV;
@@ -367,6 +383,8 @@ namespace Cleario.Services
             PreferredSubtitleLanguage = "English";
             DisableSubtitlesByDefault = false;
             DetailsSeriesView = DetailsSeriesViewMode.Full;
+            DetailsBackgroundBrightnessPercent = 100;
+            DetailsShowImdbRating = true;
             DisableSpoilers = false;
             EnableNextEpisodePopup = true;
             NextEpisodePopupSeconds = 30;
@@ -420,7 +438,8 @@ namespace Cleario.Services
             CacheImages = dto.CacheImages;
             CacheLimitGb = dto.CacheLimitGb <= 0 ? 0 : dto.CacheLimitGb;
             ShowPosterBadges = dto.ShowPosterBadges;
-            PosterSize = dto.PosterSize;
+            ShowPosterHoverYear = dto.ShowPosterHoverYear;
+            ShowPosterHoverImdbRating = dto.ShowPosterHoverImdbRating;            PosterSize = dto.PosterSize;
             PlayerSingleClickPlayPause = dto.PlayerSingleClickPlayPause;
             PlayerDoubleClickFullScreen = dto.PlayerDoubleClickFullScreen;
             PlaybackEngine = Enum.IsDefined(typeof(PlaybackEngineMode), dto.PlaybackEngine) ? dto.PlaybackEngine : PlaybackEngineMode.MPV;
@@ -436,7 +455,8 @@ namespace Cleario.Services
             PreferredSubtitleLanguage = string.IsNullOrWhiteSpace(dto.PreferredSubtitleLanguage) ? "English" : dto.PreferredSubtitleLanguage;
             DisableSubtitlesByDefault = dto.DisableSubtitlesByDefault;
             DetailsSeriesView = Enum.IsDefined(typeof(DetailsSeriesViewMode), dto.DetailsSeriesView) ? dto.DetailsSeriesView : DetailsSeriesViewMode.Full;
-            DisableSpoilers = dto.DisableSpoilers;
+            DetailsBackgroundBrightnessPercent = Math.Clamp(dto.DetailsBackgroundBrightnessPercent, 0, 100);
+            DetailsShowImdbRating = dto.DetailsShowImdbRating;            DisableSpoilers = dto.DisableSpoilers;
             EnableNextEpisodePopup = dto.EnableNextEpisodePopup;
             NextEpisodePopupSeconds = dto.NextEpisodePopupSeconds <= 0 ? 30 : dto.NextEpisodePopupSeconds;
             AutoPlayNextEpisode = dto.AutoPlayNextEpisode;
@@ -468,6 +488,8 @@ namespace Cleario.Services
             public bool CacheImages { get; set; } = false;
             public int CacheLimitGb { get; set; } = 2;
             public bool ShowPosterBadges { get; set; } = true;
+            public bool ShowPosterHoverYear { get; set; } = true;
+            public bool ShowPosterHoverImdbRating { get; set; } = true;
             public PosterSizeMode PosterSize { get; set; } = PosterSizeMode.Default;
             public bool PlayerSingleClickPlayPause { get; set; } = true;
             public bool PlayerDoubleClickFullScreen { get; set; } = true;
@@ -482,7 +504,8 @@ namespace Cleario.Services
             public string PreferredSubtitleLanguage { get; set; } = "English";
             public bool DisableSubtitlesByDefault { get; set; } = false;
             public DetailsSeriesViewMode DetailsSeriesView { get; set; } = DetailsSeriesViewMode.Full;
-            public bool DisableSpoilers { get; set; } = false;
+            public int DetailsBackgroundBrightnessPercent { get; set; } = 100;
+            public bool DetailsShowImdbRating { get; set; } = true;            public bool DisableSpoilers { get; set; } = false;
             public bool EnableNextEpisodePopup { get; set; } = true;
             public int NextEpisodePopupSeconds { get; set; } = 30;
             public bool AutoPlayNextEpisode { get; set; } = true;

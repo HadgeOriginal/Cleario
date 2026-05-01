@@ -34,6 +34,7 @@ namespace Cleario
         public MainWindow()
         {
             InitializeComponent();
+            _ = ApplyFrameCacheSettingsAsync();
             SetWindowIcon();
 
             contentFrame.Navigated += ContentFrame_Navigated;
@@ -76,8 +77,15 @@ namespace Cleario
             NavigateToPage(typeof(Pages.HomePage), navView.MenuItems[0]);
         }
 
+        private async Task ApplyFrameCacheSettingsAsync()
+        {
+            await SettingsManager.InitializeAsync();
+            contentFrame.CacheSize = SettingsManager.SaveMemory ? 0 : 12;
+        }
+
         private void NavigateToPage(Type pageType, object? selectedItem = null, object? parameter = null)
         {
+            contentFrame.CacheSize = SettingsManager.SaveMemory ? 0 : 12;
             _lastContentPageType = pageType;
             _lastContentParameter = parameter;
             _lastSelectedNavItem = selectedItem;

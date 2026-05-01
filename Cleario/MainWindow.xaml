@@ -72,7 +72,7 @@
             </NavigationView.MenuItems>
 
             <NavigationView.Content>
-                <Frame x:Name="contentFrame" />
+                <Frame x:Name="contentFrame" CacheSize="12" />
             </NavigationView.Content>
         </NavigationView>
 

@@ -33,8 +33,7 @@
 
 Cleario is a addon supported media app inspired by [Stremio](https://www.stremio.com/) built for browsing, organizing, and playing media.  
 
-<img width="2556" height="1439" alt="image" src="https://github.com/user-attachments/assets/4b4c32d2-942b-463d-afd8-bd07e9970959" />
-
+<img width="2556" height="1439" alt="Screenshot 2026-04-26 150716" src="https://github.com/user-attachments/assets/5351939c-268d-4fbd-b0b7-115aa64adc7a" />
 
 ---
 

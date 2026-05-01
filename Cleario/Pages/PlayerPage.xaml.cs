@@ -363,8 +363,6 @@ namespace Cleario.Pages
                     return;
 
                 _pointerOverInteractiveRegion = false;
-                RootGrid.Focus(FocusState.Programmatic);
-                _mpvVideoHost?.FocusNative();
                 ShowControls(true);
             });
         }

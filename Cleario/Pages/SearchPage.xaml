@@ -134,8 +134,8 @@
                                                                TextAlignment="Center"/>
                                                 </Border>
 
-                                                <Border x:Name="PosterInfoOverlay" VerticalAlignment="Bottom" Margin="8" Padding="8,6" Background="#D0000000" CornerRadius="8" Visibility="Collapsed" IsHitTestVisible="False">
-                                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Border x:Name="PosterInfoOverlay" VerticalAlignment="Bottom" Margin="8" Padding="8,6" Background="#D0000000" CornerRadius="8" HorizontalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                         <TextBlock x:Name="PosterYearTextBlock" Foreground="White" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                         <StackPanel x:Name="PosterImdbPanel" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                                             <Border Background="#FFF5C518" CornerRadius="4" Padding="5,1">
@@ -143,7 +143,7 @@
                                                             </Border>
                                                             <TextBlock x:Name="PosterImdbTextBlock" Foreground="#FFF5C518" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                         </StackPanel>
-                                                    </StackPanel>
+</StackPanel>
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -240,8 +240,8 @@
                                                                TextAlignment="Center"/>
                                                 </Border>
 
-                                                <Border x:Name="PosterInfoOverlay" VerticalAlignment="Bottom" Margin="8" Padding="8,6" Background="#D0000000" CornerRadius="8" Visibility="Collapsed" IsHitTestVisible="False">
-                                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <Border x:Name="PosterInfoOverlay" VerticalAlignment="Bottom" Margin="8" Padding="8,6" Background="#D0000000" CornerRadius="8" HorizontalAlignment="Center" Visibility="Collapsed" IsHitTestVisible="False">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                         <TextBlock x:Name="PosterYearTextBlock" Foreground="White" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                         <StackPanel x:Name="PosterImdbPanel" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                                             <Border Background="#FFF5C518" CornerRadius="4" Padding="5,1">
@@ -249,7 +249,7 @@
                                                             </Border>
                                                             <TextBlock x:Name="PosterImdbTextBlock" Foreground="#FFF5C518" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                         </StackPanel>
-                                                    </StackPanel>
+</StackPanel>
                                                 </Border>
                                             </Grid>
                                         </Border>

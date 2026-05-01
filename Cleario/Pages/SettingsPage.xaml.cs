@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using WinRT.Interop;
 
@@ -91,6 +92,9 @@ namespace Cleario.Pages
                 SettingsManager.MetadataProvider == MetadataProviderMode.Cinemeta ? 0 : 1;
 
             ShowPosterBadgesToggle.IsOn = SettingsManager.ShowPosterBadges;
+            ShowPosterHoverYearToggle.IsOn = SettingsManager.ShowPosterHoverYear;
+            ShowPosterHoverImdbToggle.IsOn = SettingsManager.ShowPosterHoverImdbRating;
+            UpdatePosterHoverBadgeOptionsVisibility();
             SelectPosterSizeOption(SettingsManager.PosterSize);
             PlayerSingleClickPlayPauseToggle.IsOn = SettingsManager.PlayerSingleClickPlayPause;
             PlayerDoubleClickFullScreenToggle.IsOn = SettingsManager.PlayerDoubleClickFullScreen;
@@ -110,6 +114,9 @@ namespace Cleario.Pages
             DisableSubtitlesByDefaultCheckBox.IsChecked = SettingsManager.DisableSubtitlesByDefault;
             UpdateSubtitleDefaultControls();
             SelectDetailsSeriesViewOption(SettingsManager.DetailsSeriesView);
+            DetailsBackgroundBrightnessSlider.Value = SettingsManager.DetailsBackgroundBrightnessPercent;
+            UpdateDetailsBackgroundBrightnessValueText();
+            DetailsShowImdbToggle.IsOn = SettingsManager.DetailsShowImdbRating;
             DisableSpoilersToggle.IsOn = SettingsManager.DisableSpoilers;
 
             CacheImagesToggle.IsOn = SettingsManager.CacheImages;
@@ -657,14 +664,15 @@ namespace Cleario.Pages
 
         private void RenderHomeCatalogs()
         {
-            HomeCatalogsPanel.Children.Clear();
+            HomeCatalogsListView.Items.Clear();
 
             if (_homeCatalogs.Count == 0)
             {
-                HomeCatalogsPanel.Children.Add(new TextBlock
+                HomeCatalogsListView.Items.Add(new TextBlock
                 {
                     Text = "No discover catalogs were found from your enabled addons.",
-                    Opacity = 0.75
+                    Opacity = 0.75,
+                    Margin = new Thickness(0, 8, 0, 8)
                 });
                 return;
             }
@@ -672,6 +680,7 @@ namespace Cleario.Pages
             for (int i = 0; i < _homeCatalogs.Count; i++)
             {
                 var catalog = _homeCatalogs[i];
+                var catalogKey = DiscoverService.BuildCatalogKey(catalog);
 
                 var border = new Border
                 {
@@ -679,14 +688,22 @@ namespace Cleario.Pages
                     BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(0x26, 0x26, 0x26, 0x26)),
                     BorderThickness = new Thickness(1),
                     CornerRadius = new CornerRadius(12),
-                    Padding = new Thickness(14)
+                    Padding = new Thickness(14),
+                    Margin = new Thickness(0, 0, 0, 10),
+                    Tag = catalogKey
                 };
 
                 var grid = new Grid();
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-                var textPanel = new StackPanel { Spacing = 2 };
+                var textPanel = new StackPanel
+                {
+                    Spacing = 2,
+                    Margin = new Thickness(0, 0, 12, 0)
+                };
                 textPanel.Children.Add(new TextBlock
                 {
                     Text = $"{catalog.Name} - {ToTypeDisplayName(catalog.Type)}",
@@ -696,57 +713,80 @@ namespace Cleario.Pages
                 textPanel.Children.Add(new TextBlock
                 {
                     Text = string.IsNullOrWhiteSpace(catalog.SourceName) ? catalog.SourceBaseUrl : catalog.SourceName,
-                    Opacity = 0.72
+                    Opacity = 0.72,
+                    TextWrapping = TextWrapping.WrapWholeWords
                 });
                 grid.Children.Add(textPanel);
-
-                var buttonsPanel = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 10,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-
-                var catalogKey = DiscoverService.BuildCatalogKey(catalog);
-                var enabledToggle = new ToggleSwitch
-                {
-                    Header = "Show on Home",
-                    IsOn = !SettingsManager.HomeCatalogDisabled.Contains(catalogKey, StringComparer.OrdinalIgnoreCase),
-                    Tag = catalogKey,
-                    VerticalAlignment = VerticalAlignment.Center
-                };
-                enabledToggle.Toggled += HomeCatalogEnabledToggle_Toggled;
 
                 var upButton = new Button
                 {
                     Content = "↑",
                     Tag = i,
                     IsEnabled = i > 0,
-                    Padding = new Thickness(12, 6, 12, 6)
+                    Width = 42,
+                    MinHeight = 36,
+                    Padding = new Thickness(0),
+                    Margin = new Thickness(0, 0, 8, 0)
                 };
                 upButton.Click += MoveCatalogUpButton_Click;
+                Grid.SetColumn(upButton, 1);
+                grid.Children.Add(upButton);
 
                 var downButton = new Button
                 {
                     Content = "↓",
                     Tag = i,
                     IsEnabled = i < _homeCatalogs.Count - 1,
-                    Padding = new Thickness(12, 6, 12, 6)
+                    Width = 42,
+                    MinHeight = 36,
+                    Padding = new Thickness(0),
+                    Margin = new Thickness(0, 0, 8, 0)
                 };
                 downButton.Click += MoveCatalogDownButton_Click;
+                Grid.SetColumn(downButton, 2);
+                grid.Children.Add(downButton);
 
-                buttonsPanel.Children.Add(enabledToggle);
-                buttonsPanel.Children.Add(upButton);
-                buttonsPanel.Children.Add(downButton);
-                Grid.SetColumn(buttonsPanel, 1);
-                grid.Children.Add(buttonsPanel);
+                var enabledToggle = new ToggleSwitch
+                {
+                    Header = "Show on Home",
+                    IsOn = !SettingsManager.HomeCatalogDisabled.Contains(catalogKey, StringComparer.OrdinalIgnoreCase),
+                    Tag = catalogKey,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 8, 0)
+                };
+                enabledToggle.Toggled += HomeCatalogEnabledToggle_Toggled;
+                Grid.SetColumn(enabledToggle, 3);
+                grid.Children.Add(enabledToggle);
 
                 border.Child = grid;
-                HomeCatalogsPanel.Children.Add(border);
+                HomeCatalogsListView.Items.Add(border);
             }
         }
 
+        private async void HomeCatalogsListView_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args)
+        {
+            var orderedKeys = new List<string>();
+            foreach (var item in HomeCatalogsListView.Items)
+            {
+                if (item is FrameworkElement { Tag: string key } && !string.IsNullOrWhiteSpace(key))
+                    orderedKeys.Add(key);
+            }
+
+            if (orderedKeys.Count != _homeCatalogs.Count)
+                return;
+
+            var reorderedCatalogs = orderedKeys
+                .Select(key => _homeCatalogs.FirstOrDefault(x => string.Equals(DiscoverService.BuildCatalogKey(x), key, StringComparison.OrdinalIgnoreCase)))
+                .Where(x => x != null)
+                .Cast<DiscoverService.DiscoverCatalogDefinition>()
+                .ToList();
+
+            _homeCatalogs.Clear();
+            _homeCatalogs.AddRange(reorderedCatalogs);
+
+            await SaveHomeCatalogOrderAsync();
+            RenderHomeCatalogs();
+        }
 
         private async Task ShowTraktDeviceCodeDialogAsync(string userCode, string verificationUrl, int runId)
         {
@@ -1021,6 +1061,17 @@ namespace Cleario.Pages
                 return;
 
             SettingsManager.ShowPosterBadges = ShowPosterBadgesToggle.IsOn;
+            UpdatePosterHoverBadgeOptionsVisibility();
+            await SettingsManager.SaveAsync();
+        }
+
+        private async void PosterHoverBadgeOption_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isLoading)
+                return;
+
+            SettingsManager.ShowPosterHoverYear = ShowPosterHoverYearToggle.IsOn;
+            SettingsManager.ShowPosterHoverImdbRating = ShowPosterHoverImdbToggle.IsOn;
             await SettingsManager.SaveAsync();
         }
 
@@ -1178,6 +1229,27 @@ namespace Cleario.Pages
             UpdateSubtitleDefaultControls();
             await SettingsManager.SaveAsync();
         }
+
+        private async void DetailsBackgroundBrightnessSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+        {
+            UpdateDetailsBackgroundBrightnessValueText();
+
+            if (_isLoading)
+                return;
+
+            SettingsManager.DetailsBackgroundBrightnessPercent = Math.Clamp((int)Math.Round(DetailsBackgroundBrightnessSlider.Value), 0, 100);
+            await SettingsManager.SaveAsync();
+        }
+
+        private async void DetailsRatingToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isLoading)
+                return;
+
+            SettingsManager.DetailsShowImdbRating = DetailsShowImdbToggle.IsOn;
+            await SettingsManager.SaveAsync();
+        }
+
 
         private async void DetailsSeriesViewComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -1525,6 +1597,24 @@ namespace Cleario.Pages
                 XamlRoot = XamlRoot
             };
             await doneDialog.ShowAsync();
+        }
+
+        private void UpdatePosterHoverBadgeOptionsVisibility()
+        {
+            if (PosterHoverBadgeOptionsPanel == null)
+                return;
+
+            PosterHoverBadgeOptionsPanel.Visibility = ShowPosterBadgesToggle != null && ShowPosterBadgesToggle.IsOn
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private void UpdateDetailsBackgroundBrightnessValueText()
+        {
+            if (DetailsBackgroundBrightnessValueTextBlock == null || DetailsBackgroundBrightnessSlider == null)
+                return;
+
+            DetailsBackgroundBrightnessValueTextBlock.Text = $"{Math.Clamp((int)Math.Round(DetailsBackgroundBrightnessSlider.Value), 0, 100)}%";
         }
 
         private static string ToTypeDisplayName(string type)

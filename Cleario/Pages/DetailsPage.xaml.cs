@@ -22,6 +22,8 @@ namespace Cleario.Pages
 {
     public sealed partial class DetailsPage : Page, INotifyPropertyChanged
     {
+        private const double DefaultDetailsBackgroundImageOpacity = 0.28;
+
         private MetaItem? _currentItem;
         private CatalogService.MetaDetails _meta = new();
         private List<CatalogService.SeriesEpisodeOption> _seriesEpisodes = new();
@@ -312,6 +314,9 @@ namespace Cleario.Pages
             if (_currentItem == null)
                 return;
 
+            await SettingsManager.InitializeAsync();
+            ApplyDetailsBackgroundBrightness();
+
             PageTitle = _currentItem.Name;
             PageSubtitle = "Loading...";
             Summary = "Loading...";
@@ -320,7 +325,7 @@ namespace Cleario.Pages
             Directors = string.Empty;
             StreamsHeader = string.Empty;
             StreamsSubHeader = "Loading streams...";
-            UpdateImdbControls(string.Empty);
+            UpdateRatingControls(string.Empty);
 
             ApplyTextToControls();
             await ApplyImagesAsync();
@@ -333,13 +338,20 @@ namespace Cleario.Pages
             _meta = await CatalogService.GetMetaDetailsAsync(_currentItem.Type, _currentItem.Id, _currentItem.SourceBaseUrl);
 
             var displayTitle = !string.IsNullOrWhiteSpace(_meta.Name) ? _meta.Name : _currentItem.Name;
-            var year = BuildYearDisplayFromReleaseInfo(!string.IsNullOrWhiteSpace(_meta.Year) ? _meta.Year : _meta.ReleaseInfo);
+            var yearSource = !string.IsNullOrWhiteSpace(_currentItem.Year)
+                ? _currentItem.Year
+                : !string.IsNullOrWhiteSpace(_meta.ReleaseInfo)
+                    ? _meta.ReleaseInfo
+                    : _meta.Year;
+            var year = BuildYearDisplayFromReleaseInfo(yearSource);
+            if (!string.IsNullOrWhiteSpace(year))
+                _currentItem.Year = year;
             var runtime = _meta.Runtime;
             var imdb = _meta.ImdbRating;
 
             PageTitle = displayTitle;
             PageSubtitle = BuildMetaLine(year, runtime);
-            UpdateImdbControls(imdb);
+            UpdateRatingControls(imdb);
             Summary = string.IsNullOrWhiteSpace(_meta.Description) ? string.Empty : _meta.Description;
             Genres = PrefixIfNotEmpty("Genres: ", _meta.Genres);
             Cast = PrefixIfNotEmpty("Cast: ", _meta.Cast);
@@ -396,6 +408,17 @@ namespace Cleario.Pages
 
             AddImageCandidate(backgroundCandidates, CatalogService.PlaceholderPosterUri);
             SetBackgroundCandidates(backgroundCandidates);
+            ApplyDetailsBackgroundBrightness();
+        }
+
+
+        private void ApplyDetailsBackgroundBrightness()
+        {
+            if (PageBackgroundImage == null)
+                return;
+
+            var brightness = Math.Clamp(SettingsManager.DetailsBackgroundBrightnessPercent, 0, 100) / 100.0;
+            PageBackgroundImage.Opacity = DefaultDetailsBackgroundImageOpacity * brightness;
         }
 
         private async Task UpdateDiscordDetailsPresenceAsync()
@@ -1225,7 +1248,7 @@ namespace Cleario.Pages
             return string.Join("  •  ", parts);
         }
 
-        private void UpdateImdbControls(string imdbRating)
+        private void UpdateRatingControls(string imdbRating)
         {
             var imdbId = ExtractImdbId(_currentItem?.Id);
             _imdbUrl = !string.IsNullOrWhiteSpace(imdbId)
@@ -1233,13 +1256,13 @@ namespace Cleario.Pages
                 : string.Empty;
 
             if (ImdbButton != null)
-                ImdbButton.Visibility = !string.IsNullOrWhiteSpace(_imdbUrl) && !string.IsNullOrWhiteSpace(imdbRating)
+                ImdbButton.Visibility = SettingsManager.DetailsShowImdbRating && !string.IsNullOrWhiteSpace(_imdbUrl) && !string.IsNullOrWhiteSpace(imdbRating)
                     ? Visibility.Visible
                     : Visibility.Collapsed;
 
             if (ImdbRatingTextBlock != null)
                 ImdbRatingTextBlock.Text = imdbRating ?? string.Empty;
-        }
+}
 
         private static string ExtractImdbId(string? rawId)
         {
@@ -1306,8 +1329,7 @@ namespace Cleario.Pages
             stream.ContentId = _currentItem?.Id ?? stream.ContentId;
             stream.SourceBaseUrl = _currentItem?.SourceBaseUrl ?? stream.SourceBaseUrl;
             stream.Year = !string.IsNullOrWhiteSpace(_meta.Year) ? _meta.Year : ExtractYear(_meta.ReleaseInfo);
-            stream.ImdbRating = _meta.ImdbRating;
-            stream.ContentLogoUrl = !string.IsNullOrWhiteSpace(_meta.LogoUrl) ? _meta.LogoUrl : CatalogService.BuildMetaHubLogoUrl(_currentItem?.Id ?? string.Empty, "medium");
+            stream.ImdbRating = _meta.ImdbRating;            stream.ContentLogoUrl = !string.IsNullOrWhiteSpace(_meta.LogoUrl) ? _meta.LogoUrl : CatalogService.BuildMetaHubLogoUrl(_currentItem?.Id ?? string.Empty, "medium");
             stream.PosterUrl = !string.IsNullOrWhiteSpace(_meta.PosterUrl) ? _meta.PosterUrl : (_currentItem?.PosterUrl ?? string.Empty);
             stream.FallbackPosterUrl = !string.IsNullOrWhiteSpace(_currentItem?.FallbackPosterUrl) ? _currentItem.FallbackPosterUrl : (_currentItem?.Poster ?? string.Empty);
             if (stream.IsResumeCandidate && stream.ResumePositionMs > 15_000)
