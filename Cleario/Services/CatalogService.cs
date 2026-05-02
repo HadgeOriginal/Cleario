@@ -188,6 +188,7 @@ namespace Cleario.Services
                 }
             }
 
+
             public bool IsWatched
             {
                 get => _isWatched;
@@ -346,7 +347,9 @@ namespace Cleario.Services
             public string PosterUrl { get; set; } = string.Empty;
             public string FallbackPosterUrl { get; set; } = string.Empty;
             public string Year { get; set; } = string.Empty;
-            public string ImdbRating { get; set; } = string.Empty;            public string ContentId { get; set; } = string.Empty;
+            public string ImdbRating { get; set; } = string.Empty;
+            public string ExpectedRuntime { get; set; } = string.Empty;
+            public string ContentId { get; set; } = string.Empty;
             public string SourceBaseUrl { get; set; } = string.Empty;
             public string VideoId { get; set; } = string.Empty;
             public int? SeasonNumber { get; set; }
@@ -1244,27 +1247,91 @@ namespace Cleario.Services
 
         private static string ParseImdbRating(JsonElement meta)
         {
-            if (meta.TryGetProperty("imdbRating", out var imdbProp))
+            foreach (var key in new[] { "imdbRating", "imdb_rating", "imdbScore", "imdb_score", "rating" })
             {
-                if (imdbProp.ValueKind == JsonValueKind.Number && imdbProp.TryGetDouble(out var d))
-                    return d.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+                if (!meta.TryGetProperty(key, out var imdbProp))
+                    continue;
 
-                if (imdbProp.ValueKind == JsonValueKind.String)
+                var normalized = NormalizeImdbRatingValue(imdbProp);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    return normalized;
+            }
+
+            if (meta.TryGetProperty("ratings", out var ratings))
+            {
+                if (ratings.ValueKind == JsonValueKind.Object)
                 {
-                    var value = imdbProp.GetString() ?? string.Empty;
-                    value = value.Replace(',', '.');
-
-                    if (double.TryParse(value, System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                    foreach (var rating in ratings.EnumerateObject())
                     {
-                        return parsed.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
-                    }
+                        if (!rating.Name.Contains("imdb", StringComparison.OrdinalIgnoreCase))
+                            continue;
 
-                    return value;
+                        var normalized = NormalizeImdbRatingValue(rating.Value);
+                        if (!string.IsNullOrWhiteSpace(normalized))
+                            return normalized;
+                    }
+                }
+                else if (ratings.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var rating in ratings.EnumerateArray())
+                    {
+                        if (rating.ValueKind != JsonValueKind.Object)
+                            continue;
+
+                        var source = string.Empty;
+                        foreach (var sourceKey in new[] { "source", "name", "provider", "label", "key" })
+                        {
+                            if (rating.TryGetProperty(sourceKey, out var sourceProp))
+                            {
+                                source = sourceProp.GetString() ?? string.Empty;
+                                if (!string.IsNullOrWhiteSpace(source))
+                                    break;
+                            }
+                        }
+
+                        if (!source.Contains("imdb", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        foreach (var valueKey in new[] { "value", "score", "rating" })
+                        {
+                            if (rating.TryGetProperty(valueKey, out var valueProp))
+                            {
+                                var normalized = NormalizeImdbRatingValue(valueProp);
+                                if (!string.IsNullOrWhiteSpace(normalized))
+                                    return normalized;
+                            }
+                        }
+                    }
                 }
             }
 
             return string.Empty;
+        }
+
+        private static string NormalizeImdbRatingValue(JsonElement imdbProp)
+        {
+            if (imdbProp.ValueKind == JsonValueKind.Number && imdbProp.TryGetDouble(out var d))
+                return d > 0 && d <= 10 ? d.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+
+            if (imdbProp.ValueKind != JsonValueKind.String)
+                return string.Empty;
+
+            var value = (imdbProp.GetString() ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            value = value.Replace(',', '.');
+            value = Regex.Replace(value, @"\s*/\s*10\s*$", string.Empty, RegexOptions.IgnoreCase).Trim();
+
+            if (double.TryParse(value, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            {
+                return parsed > 0 && parsed <= 10
+                    ? parsed.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)
+                    : string.Empty;
+            }
+
+            return value;
         }
 
 
@@ -1336,11 +1403,6 @@ namespace Cleario.Services
             };
         }
 
-        private static string GetPosterCacheFolderPath()
-        {
-            return AppPaths.GetFolderPath("PosterCache");
-        }
-
         private static async Task<long> GetPosterCacheLimitBytesAsync()
         {
             await SettingsManager.InitializeAsync();
@@ -1359,42 +1421,7 @@ namespace Cleario.Services
             try
             {
                 var limitBytes = await GetPosterCacheLimitBytesAsync();
-                if (limitBytes <= 0)
-                    return;
-
-                var posterFolderPath = GetPosterCacheFolderPath();
-                Directory.CreateDirectory(posterFolderPath);
-
-                var files = Directory
-                    .EnumerateFiles(posterFolderPath)
-                    .Select(path => new FileInfo(path))
-                    .OrderBy(info => info.CreationTimeUtc == DateTime.MinValue ? info.LastWriteTimeUtc : info.CreationTimeUtc)
-                    .ThenBy(info => info.LastWriteTimeUtc)
-                    .ToList();
-
-                long totalBytes = files.Sum(info =>
-                {
-                    try { return info.Length; } catch { return 0L; }
-                });
-
-                if (bytesNeeded > 0 && bytesNeeded > limitBytes)
-                    return;
-
-                foreach (var file in files)
-                {
-                    if (totalBytes + bytesNeeded <= limitBytes)
-                        break;
-
-                    try
-                    {
-                        long length = file.Length;
-                        file.Delete();
-                        totalBytes -= length;
-                    }
-                    catch
-                    {
-                    }
-                }
+                await PosterZipCacheService.EnforceLimitAsync(limitBytes, bytesNeeded);
             }
             catch
             {
@@ -1403,35 +1430,7 @@ namespace Cleario.Services
 
         private static string TryGetCachedPosterUri(string id, string url)
         {
-            if (string.IsNullOrWhiteSpace(url))
-                return string.Empty;
-
-            if (url.StartsWith("ms-appx:///", StringComparison.OrdinalIgnoreCase) ||
-                url.StartsWith("ms-appdata:///", StringComparison.OrdinalIgnoreCase))
-            {
-                return url;
-            }
-
-            try
-            {
-                var hash = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(url))).ToLowerInvariant();
-                var safeId = string.IsNullOrWhiteSpace(id) ? "poster" : MakeSafeFileName(id);
-                var posterFolderPath = GetPosterCacheFolderPath();
-                Directory.CreateDirectory(posterFolderPath);
-
-                var existingFile = Directory
-                    .EnumerateFiles(posterFolderPath, $"v2_{safeId}_{hash}.*")
-                    .FirstOrDefault(path => new FileInfo(path).Length > 0);
-
-                if (string.IsNullOrWhiteSpace(existingFile))
-                    return string.Empty;
-
-                return $"ms-appdata:///local/PosterCache/{Uri.EscapeDataString(Path.GetFileName(existingFile))}";
-            }
-            catch
-            {
-                return string.Empty;
-            }
+            return PosterZipCacheService.TryGetCachedPosterUri(id, url);
         }
 
         private static void QueuePosterCacheDownload(string id, string url)
@@ -1492,17 +1491,9 @@ namespace Cleario.Services
                 if (!response.IsSuccessStatusCode)
                     return string.Empty;
 
-                var hash = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(url))).ToLowerInvariant();
-                var safeId = string.IsNullOrWhiteSpace(id) ? "poster" : MakeSafeFileName(id);
-                var posterFolderPath = GetPosterCacheFolderPath();
-                Directory.CreateDirectory(posterFolderPath);
-
-                var existingFile = Directory
-                    .EnumerateFiles(posterFolderPath, $"v2_{safeId}_{hash}.*")
-                    .FirstOrDefault(path => new FileInfo(path).Length > 0);
-
-                if (!string.IsNullOrWhiteSpace(existingFile))
-                    return $"ms-appdata:///local/PosterCache/{Uri.EscapeDataString(Path.GetFileName(existingFile))}";
+                var cached = TryGetCachedPosterUri(id, url);
+                if (!string.IsNullOrWhiteSpace(cached))
+                    return cached;
 
                 var mediaType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
                 if (!mediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) &&
@@ -1519,15 +1510,8 @@ namespace Cleario.Services
                 if (string.IsNullOrWhiteSpace(extension))
                     return url;
 
-                var fileName = $"v2_{safeId}_{hash}{extension}";
-                var fullPath = Path.Combine(posterFolderPath, fileName);
-
-                await EnsurePosterCacheCapacityAsync(bytes.Length);
-
-                if (!File.Exists(fullPath) || new FileInfo(fullPath).Length == 0)
-                    await File.WriteAllBytesAsync(fullPath, bytes);
-
-                return $"ms-appdata:///local/PosterCache/{Uri.EscapeDataString(fileName)}";
+                var limitBytes = await GetPosterCacheLimitBytesAsync();
+                return await PosterZipCacheService.SaveAsync(id, url, bytes, extension, limitBytes);
             }
             catch
             {
@@ -2088,7 +2072,6 @@ namespace Cleario.Services
 
                     var released = ParseEpisodeReleaseDate(video);
                     var thumbnail = ParseEpisodeThumbnail(video, metadataBaseUrl);
-
                     results.Add(new SeriesEpisodeOption
                     {
                         VideoId = videoId,

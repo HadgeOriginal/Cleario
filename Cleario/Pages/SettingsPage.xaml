@@ -107,6 +107,28 @@
                                 </StackPanel>
                             </Border>
 
+
+
+                            <Border Background="#171717"
+                                    BorderBrush="#262626"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Hardware acceleration"
+                                               FontSize="20"
+                                               FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Use GPU/video hardware acceleration for Cleario playback when available. Turn this off if a device has driver issues, black screens, or unstable decoding."
+                                               Opacity="0.75"
+                                               TextWrapping="WrapWholeWords"/>
+
+                                    <ToggleSwitch x:Name="HardwareAccelerationToggle"
+                                                  Header="Enable hardware acceleration"
+                                                  Toggled="HardwareAccelerationToggle_Toggled"/>
+                                </StackPanel>
+                            </Border>
+
                             <Border Background="#171717"
                                     BorderBrush="#262626"
                                     BorderThickness="1"
@@ -449,6 +471,7 @@
                                         </ComboBox>
                                     </StackPanel>
 
+
                                     <ToggleSwitch x:Name="DisableSpoilersToggle"
                                                   Header="Disable Spoilers"
                                                   Toggled="DisableSpoilersToggle_Toggled"/>
@@ -473,7 +496,7 @@
                                                FontSize="20"
                                                FontWeight="SemiBold"/>
 
-                                    <TextBlock Text="Store poster images in a local cache folder so they load faster and do not need to be fetched every time."
+                                    <TextBlock Text="Store poster images in a ZIP-backed local cache so Cleario does not leave thousands of loose image files on disk."
                                                Opacity="0.75"
                                                TextWrapping="WrapWholeWords"/>
 

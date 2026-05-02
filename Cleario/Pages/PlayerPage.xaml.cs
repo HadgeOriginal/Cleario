@@ -124,6 +124,7 @@ namespace Cleario.Pages
         private readonly DispatcherTimer _cursorHideReapplyTimer;
         private readonly DispatcherTimer _singleTapTimer;
         private readonly DispatcherTimer _mpvSeekDebounceTimer;
+        private readonly DispatcherTimer _vlcSeekDebounceTimer;
 
         private readonly MenuFlyout _audioTracksFlyout = new();
         private readonly MenuFlyout _subtitleTracksFlyout = new();
@@ -208,7 +209,10 @@ namespace Cleario.Pages
         private long _retryResumePositionMs;
         private long _lastKnownPlaybackPositionMs;
         private long _pendingMpvSeekTargetMs = -1;
+        private long _pendingVlcSeekTargetMs = -1;
+        private long _pendingTimelineSeekTargetMs = -1;
         private DateTime _lastMpvSeekCommandUtc = DateTime.MinValue;
+        private DateTime _lastVlcSeekCommandUtc = DateTime.MinValue;
         private string _playbackLoadingStatusMessage = string.Empty;
         private string? _loadingLogoSourceUrl;
         private bool _loadingLogoPulseStoryboardActive;
@@ -218,8 +222,10 @@ namespace Cleario.Pages
         private DateTime _seekBufferingOverlayEligibleAtUtc = DateTime.MinValue;
 
         private const int MpvMaxStartupAttempts = 5;
-        private static readonly TimeSpan MpvSeekDebounceInterval = TimeSpan.FromMilliseconds(280);
+        private static readonly TimeSpan MpvSeekDebounceInterval = TimeSpan.FromMilliseconds(750);
+        private static readonly TimeSpan VlcSeekDebounceInterval = TimeSpan.FromMilliseconds(450);
         private static readonly TimeSpan MinimumMpvStartupLogoVisibleDuration = TimeSpan.FromMilliseconds(1100);
+        private const long MinimumValidPlaybackDurationMs = 30_000;
 
         private int EffectiveEmbeddedRetryAttempts => Math.Clamp(SettingsManager.MpvRetryAttempts, 0, 10);
 
@@ -297,6 +303,12 @@ namespace Cleario.Pages
                 Interval = MpvSeekDebounceInterval
             };
             _mpvSeekDebounceTimer.Tick += MpvSeekDebounceTimer_Tick;
+
+            _vlcSeekDebounceTimer = new DispatcherTimer
+            {
+                Interval = VlcSeekDebounceInterval
+            };
+            _vlcSeekDebounceTimer.Tick += VlcSeekDebounceTimer_Tick;
 
             Unloaded += PlayerPage_Unloaded;
         }
@@ -505,6 +517,9 @@ namespace Cleario.Pages
 
             try
             {
+                if (_pageClosed || _exitInProgress || RootGrid?.XamlRoot == null)
+                    return;
+
                 if (!_mpvOverlayPopup.IsOpen)
                 {
                     _mpvOverlayPopup.IsOpen = true;
@@ -803,6 +818,10 @@ namespace Cleario.Pages
             _retryResumePositionMs = Math.Max(0, stream?.StartPositionMs ?? 0);
             _lastKnownPlaybackPositionMs = _retryResumePositionMs;
             _pendingMpvSeekTargetMs = -1;
+            _pendingVlcSeekTargetMs = -1;
+            _pendingTimelineSeekTargetMs = -1;
+            _mpvSeekDebounceTimer.Stop();
+            _vlcSeekDebounceTimer.Stop();
             _lastSavedProgressMs = -1;
             _resumePositionApplied = false;
             _lastHistorySaveUtc = DateTime.MinValue;
@@ -1024,6 +1043,7 @@ namespace Cleario.Pages
                 : $"{baseSeriesName} ({target.SeasonNumber ?? 0}x{(target.EpisodeNumber ?? 0):00})";
             stream.Year = _stream?.Year ?? stream.Year;
             stream.ImdbRating = _stream?.ImdbRating ?? stream.ImdbRating;
+            stream.ExpectedRuntime = _stream?.ExpectedRuntime ?? stream.ExpectedRuntime;
             stream.ContentLogoUrl = _stream?.ContentLogoUrl ?? stream.ContentLogoUrl;
             stream.PosterUrl = !string.IsNullOrWhiteSpace(_stream?.PosterUrl) ? _stream!.PosterUrl : stream.PosterUrl;
             stream.FallbackPosterUrl = !string.IsNullOrWhiteSpace(_stream?.FallbackPosterUrl) ? _stream!.FallbackPosterUrl : stream.FallbackPosterUrl;
@@ -1875,7 +1895,10 @@ namespace Cleario.Pages
             _bufferingOverlayActive = false;
             _seekOverlayActive = false;
             _pendingMpvSeekTargetMs = -1;
+            _pendingVlcSeekTargetMs = -1;
+            _pendingTimelineSeekTargetMs = -1;
             _mpvSeekDebounceTimer.Stop();
+            _vlcSeekDebounceTimer.Stop();
             LoadingOverlay.Visibility = Visibility.Collapsed;
             ResetLoadingOverlayPresentationToSpinner();
             ShowMessage("Stream launched in external player", "Cleario opened this stream in VLC. You can return to the details page with Back or Stop.");
@@ -1952,7 +1975,10 @@ namespace Cleario.Pages
             _bufferingOverlayActive = false;
             _seekOverlayActive = false;
             _pendingMpvSeekTargetMs = -1;
+            _pendingVlcSeekTargetMs = -1;
+            _pendingTimelineSeekTargetMs = -1;
             _mpvSeekDebounceTimer.Stop();
+            _vlcSeekDebounceTimer.Stop();
             LoadingOverlay.Visibility = Visibility.Collapsed;
             ResetLoadingOverlayPresentationToSpinner();
 
@@ -2100,6 +2126,10 @@ namespace Cleario.Pages
                 ? 0
                 : Math.Clamp(mpvAttempt <= 0 ? 1 : mpvAttempt, 1, Math.Max(1, EffectiveEmbeddedRetryAttempts));
             _pendingMpvSeekTargetMs = -1;
+            _pendingVlcSeekTargetMs = -1;
+            _pendingTimelineSeekTargetMs = -1;
+            _mpvSeekDebounceTimer.Stop();
+            _vlcSeekDebounceTimer.Stop();
             _loadingForPlaybackStartup = engine != PlaybackEngineMode.ExternalPlayer;
             _bufferingOverlayActive = false;
             _seekOverlayActive = false;
@@ -2298,7 +2328,7 @@ namespace Cleario.Pages
                 _libVlc = new LibVLC(enableDebugLogs: false, _videoInitArgs.SwapChainOptions);
                 _mediaPlayer = new MediaPlayer(_libVlc)
                 {
-                    EnableHardwareDecoding = true
+                    EnableHardwareDecoding = SettingsManager.HardwareAccelerationEnabled
                 };
 
                 _mediaPlayer.Volume = Math.Clamp((int)VolumeSlider.Value, 0, 200);
@@ -2364,7 +2394,7 @@ namespace Cleario.Pages
                 EnsureMpvStartupLoadingOverlayVisible();
                 await System.Threading.Tasks.Task.Yield();
 
-                _mpvPlayer.Start(url, Math.Clamp((int)VolumeSlider.Value, 0, 200), _stream?.StartPositionMs ?? 0);
+                _mpvPlayer.Start(url, Math.Clamp((int)VolumeSlider.Value, 0, 200), _stream?.StartPositionMs ?? 0, SettingsManager.HardwareAccelerationEnabled);
 
                 _selectedAudioTrackId = _mpvPlayer.AudioTrack;
                 _selectedSubtitleTrackId = _mpvPlayer.SubtitleTrack;
@@ -2454,8 +2484,10 @@ namespace Cleario.Pages
         private Media BuildMedia(LibVLC libVlc, string url)
         {
             var media = new Media(libVlc, new Uri(url));
-            media.AddOption(":network-caching=1200");
-            media.AddOption(":file-caching=400");
+            if (!SettingsManager.HardwareAccelerationEnabled)
+                media.AddOption(":avcodec-hw=none");
+            media.AddOption(":network-caching=1800");
+            media.AddOption(":file-caching=700");
             media.AddOption(":input-fast-seek");
             media.AddOption(":http-reconnect=true");
             media.AddOption(":audio-replay-gain-mode=none");
@@ -2761,9 +2793,12 @@ namespace Cleario.Pages
             }
         }
 
-        private static bool ShouldAutoMarkEpisodeWatched(long positionMs, long durationMs)
+        private bool ShouldAutoMarkCurrentContentWatched(long positionMs, long durationMs)
         {
-            if (durationMs <= 0 || positionMs <= 0)
+            if (!IsPlaybackDurationEligibleForWatchedState(durationMs))
+                return false;
+
+            if (positionMs <= 0)
                 return false;
 
             if (durationMs - positionMs <= 5 * 60 * 1000L)
@@ -2771,6 +2806,62 @@ namespace Cleario.Pages
 
             return (double)positionMs / durationMs >= 0.95;
         }
+
+        private bool IsPlaybackDurationEligibleForWatchedState(long durationMs)
+        {
+            if (durationMs < MinimumValidPlaybackDurationMs)
+                return false;
+
+            var expectedRuntimeMs = ParseExpectedRuntimeMs(_stream?.ExpectedRuntime);
+            if (expectedRuntimeMs <= 0)
+                return true;
+
+            var difference = Math.Abs(durationMs - expectedRuntimeMs);
+            var tolerance = Math.Max(10 * 60 * 1000L, (long)(expectedRuntimeMs * 0.25));
+            return difference <= tolerance;
+        }
+
+        private static long ParseExpectedRuntimeMs(string? runtime)
+        {
+            if (string.IsNullOrWhiteSpace(runtime))
+                return 0;
+
+            var value = runtime.Trim();
+            if (long.TryParse(value, out var numericMinutes) && numericMinutes > 0)
+                return numericMinutes * 60_000L;
+
+            var iso = Regex.Match(value, @"^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$", RegexOptions.IgnoreCase);
+            if (iso.Success)
+            {
+                var hours = ParseLongGroup(iso.Groups[1]);
+                var minutes = ParseLongGroup(iso.Groups[2]);
+                var seconds = ParseLongGroup(iso.Groups[3]);
+                return ((hours * 60L + minutes) * 60L + seconds) * 1000L;
+            }
+
+            var hourMatch = Regex.Match(value, @"(\d+)\s*(?:h|hr|hrs|hour|hours)\b", RegexOptions.IgnoreCase);
+            var minuteMatch = Regex.Match(value, @"(\d+)\s*(?:m|min|mins|minute|minutes)\b", RegexOptions.IgnoreCase);
+            var secondMatch = Regex.Match(value, @"(\d+)\s*(?:s|sec|secs|second|seconds)\b", RegexOptions.IgnoreCase);
+
+            var totalSeconds = 0L;
+            if (hourMatch.Success)
+                totalSeconds += ParseLongGroup(hourMatch.Groups[1]) * 3600L;
+            if (minuteMatch.Success)
+                totalSeconds += ParseLongGroup(minuteMatch.Groups[1]) * 60L;
+            if (secondMatch.Success)
+                totalSeconds += ParseLongGroup(secondMatch.Groups[1]);
+
+            if (totalSeconds > 0)
+                return totalSeconds * 1000L;
+
+            var firstNumber = Regex.Match(value, @"\d+");
+            return firstNumber.Success && long.TryParse(firstNumber.Value, out var fallbackMinutes) && fallbackMinutes > 0
+                ? fallbackMinutes * 60_000L
+                : 0;
+        }
+
+        private static long ParseLongGroup(Group group)
+            => group.Success && long.TryParse(group.Value, out var value) ? value : 0;
 
         private async System.Threading.Tasks.Task MaybeMarkCurrentEpisodeWatchedNearEndAsync()
         {
@@ -2782,7 +2873,7 @@ namespace Cleario.Pages
 
             var totalLength = ActivePlayerLength;
             var currentTime = ActivePlayerTime;
-            if (!ShouldAutoMarkEpisodeWatched(currentTime, totalLength))
+            if (!ShouldAutoMarkCurrentContentWatched(currentTime, totalLength))
                 return;
 
             await MarkCurrentEpisodeWatchedAsync(sendTraktStop: false);
@@ -2791,6 +2882,9 @@ namespace Cleario.Pages
         private async System.Threading.Tasks.Task MarkCurrentEpisodeWatchedAsync(bool sendTraktStop)
         {
             if (_stream == null || !string.Equals(_stream.ContentType, "series", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (!ShouldAutoMarkCurrentContentWatched(ActivePlayerTime, ActivePlayerLength))
                 return;
 
             if (_currentEpisodeWatchedMarked || _currentEpisodeWatchedMarkInProgress)
@@ -2875,8 +2969,9 @@ namespace Cleario.Pages
 
             _stream.ContentId = item.Id;
             _stream.StreamKey = CatalogService.BuildStreamIdentity(_stream);
-            await HistoryService.SaveProgressAsync(item, _stream, currentTime, totalLength);
-            if (string.Equals(item.Type, "series", StringComparison.OrdinalIgnoreCase) && ShouldAutoMarkEpisodeWatched(currentTime, totalLength))
+            var allowMarkWatched = ShouldAutoMarkCurrentContentWatched(currentTime, totalLength);
+            await HistoryService.SaveProgressAsync(item, _stream, currentTime, totalLength, allowMarkWatched);
+            if (string.Equals(item.Type, "series", StringComparison.OrdinalIgnoreCase) && allowMarkWatched)
                 _currentEpisodeWatchedMarked = true;
             _lastSavedProgressMs = currentTime;
             _lastHistorySaveUtc = DateTime.UtcNow;
@@ -3329,11 +3424,18 @@ namespace Cleario.Pages
                 return;
 
             var newTime = (long)e.NewValue;
-            if (Math.Abs(ActivePlayerTime - newTime) > 1200)
+            if (Math.Abs(GetSeekComparisonTime() - newTime) <= 1200)
+                return;
+
+            ShowSeekLoadingOverlay(newTime);
+
+            if (_timelineSeekPointerDown)
             {
-                ShowSeekLoadingOverlay(newTime);
-                SetActiveTime(newTime);
+                _pendingTimelineSeekTargetMs = Math.Clamp(newTime, 0, ActivePlayerLength);
+                return;
             }
+
+            SetActiveTime(newTime);
         }
 
         private void PositionSlider_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -3352,6 +3454,8 @@ namespace Cleario.Pages
                 _seekBufferingOverlayEligibleAtUtc = now.AddMilliseconds(650);
                 _suppressBufferingOverlayUntilUtc = _seekBufferingOverlayEligibleAtUtc;
             }
+
+            FlushPendingTimelineSeek();
         }
 
         private void PositionSlider_PointerCanceled(object sender, PointerRoutedEventArgs e)
@@ -3575,6 +3679,31 @@ namespace Cleario.Pages
                 _mediaPlayer?.SetPause(pause);
         }
 
+        private long GetSeekComparisonTime()
+        {
+            if (_pendingTimelineSeekTargetMs >= 0)
+                return _pendingTimelineSeekTargetMs;
+
+            if (UseMpvEngine && _pendingMpvSeekTargetMs >= 0)
+                return _pendingMpvSeekTargetMs;
+
+            if (!UseMpvEngine && _pendingVlcSeekTargetMs >= 0)
+                return _pendingVlcSeekTargetMs;
+
+            return ActivePlayerTime;
+        }
+
+        private void FlushPendingTimelineSeek()
+        {
+            var targetMs = _pendingTimelineSeekTargetMs;
+            _pendingTimelineSeekTargetMs = -1;
+
+            if (targetMs < 0 || !HasActivePlayer || ActivePlayerLength <= 0)
+                return;
+
+            SetActiveTime(Math.Clamp(targetMs, 0, ActivePlayerLength));
+        }
+
         private void SetActiveTime(long milliseconds)
         {
             milliseconds = Math.Max(0, milliseconds);
@@ -3582,20 +3711,33 @@ namespace Cleario.Pages
             if (UseMpvEngine && _mpvPlayer != null)
                 QueueMpvSeek(milliseconds);
             else if (_mediaPlayer != null)
-                _mediaPlayer.Time = milliseconds;
+                QueueVlcSeek(milliseconds);
         }
 
         private void QueueMpvSeek(long milliseconds)
         {
             _pendingMpvSeekTargetMs = Math.Max(0, milliseconds);
-            _suppressBufferingOverlayUntilUtc = DateTime.UtcNow.AddMilliseconds(900);
+            _suppressBufferingOverlayUntilUtc = DateTime.UtcNow.AddMilliseconds(1200);
 
             var elapsedSinceLastSeek = DateTime.UtcNow - _lastMpvSeekCommandUtc;
             _mpvSeekDebounceTimer.Stop();
             _mpvSeekDebounceTimer.Interval = elapsedSinceLastSeek < MpvSeekDebounceInterval
                 ? MpvSeekDebounceInterval
-                : TimeSpan.FromMilliseconds(140);
+                : TimeSpan.FromMilliseconds(300);
             _mpvSeekDebounceTimer.Start();
+        }
+
+        private void QueueVlcSeek(long milliseconds)
+        {
+            _pendingVlcSeekTargetMs = Math.Max(0, milliseconds);
+            _suppressBufferingOverlayUntilUtc = DateTime.UtcNow.AddMilliseconds(900);
+
+            var elapsedSinceLastSeek = DateTime.UtcNow - _lastVlcSeekCommandUtc;
+            _vlcSeekDebounceTimer.Stop();
+            _vlcSeekDebounceTimer.Interval = elapsedSinceLastSeek < VlcSeekDebounceInterval
+                ? VlcSeekDebounceInterval
+                : TimeSpan.FromMilliseconds(180);
+            _vlcSeekDebounceTimer.Start();
         }
 
         private void MpvSeekDebounceTimer_Tick(object? sender, object e)
@@ -3611,8 +3753,29 @@ namespace Cleario.Pages
             try
             {
                 _lastMpvSeekCommandUtc = DateTime.UtcNow;
-                _suppressBufferingOverlayUntilUtc = DateTime.UtcNow.AddMilliseconds(900);
+                _suppressBufferingOverlayUntilUtc = DateTime.UtcNow.AddMilliseconds(1200);
                 _mpvPlayer.Time = targetMs;
+            }
+            catch
+            {
+            }
+        }
+
+        private void VlcSeekDebounceTimer_Tick(object? sender, object e)
+        {
+            _vlcSeekDebounceTimer.Stop();
+
+            var targetMs = _pendingVlcSeekTargetMs;
+            _pendingVlcSeekTargetMs = -1;
+
+            if (UseMpvEngine || _mediaPlayer == null || targetMs < 0 || _pageClosed || _exitInProgress)
+                return;
+
+            try
+            {
+                _lastVlcSeekCommandUtc = DateTime.UtcNow;
+                _suppressBufferingOverlayUntilUtc = DateTime.UtcNow.AddMilliseconds(900);
+                _mediaPlayer.Time = targetMs;
             }
             catch
             {
@@ -3679,7 +3842,7 @@ namespace Cleario.Pages
             if (!HasActivePlayer || ActivePlayerLength <= 0)
                 return;
 
-            var newTime = Math.Clamp(ActivePlayerTime + deltaMs, 0, ActivePlayerLength);
+            var newTime = Math.Clamp(GetSeekComparisonTime() + deltaMs, 0, ActivePlayerLength);
             ShowSeekLoadingOverlay(newTime);
             SetActiveTime(newTime);
             _pointerOverInteractiveRegion = false;
@@ -4514,12 +4677,12 @@ namespace Cleario.Pages
         private void PlayerPage_Unloaded(object sender, RoutedEventArgs e)
         {
             _pageClosed = true;
+            _exitInProgress = true;
             RefreshFullScreenState();
             RestoreAppShell();
             App.MainAppWindow?.SetSearchBarVisible(true);
             EnsureCursorVisible();
             CleanupPlayer();
-            _exitInProgress = false;
         }
 
         private void CleanupPlayer()
@@ -4547,7 +4710,10 @@ namespace Cleario.Pages
             _controlsHideTimer.Stop();
             _singleTapTimer.Stop();
             _mpvSeekDebounceTimer.Stop();
+            _vlcSeekDebounceTimer.Stop();
             _pendingMpvSeekTargetMs = -1;
+            _pendingVlcSeekTargetMs = -1;
+            _pendingTimelineSeekTargetMs = -1;
             EnsureCursorVisible();
 
             if (LoadingStatusTextBlock != null)

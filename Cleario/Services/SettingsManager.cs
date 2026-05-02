@@ -56,6 +56,7 @@ namespace Cleario.Services
 
         public static bool CacheImages { get; set; } = false;
         public static int CacheLimitGb { get; set; } = 2;
+        public static bool HardwareAccelerationEnabled { get; set; } = true;
         public static bool ShowPosterBadges { get; set; } = true;
         public static bool ShowPosterHoverYear { get; set; } = true;
         public static bool ShowPosterHoverImdbRating { get; set; } = true;
@@ -134,6 +135,7 @@ namespace Cleario.Services
                     MetadataProvider = MetadataProvider,
                     CacheImages = CacheImages,
                     CacheLimitGb = CacheLimitGb,
+                    HardwareAccelerationEnabled = HardwareAccelerationEnabled,
                     ShowPosterBadges = ShowPosterBadges,
                     ShowPosterHoverYear = ShowPosterHoverYear,
                     ShowPosterHoverImdbRating = ShowPosterHoverImdbRating,
@@ -196,6 +198,7 @@ namespace Cleario.Services
                 MetadataProvider = MetadataProvider,
                 CacheImages = CacheImages,
                 CacheLimitGb = CacheLimitGb,
+                HardwareAccelerationEnabled = HardwareAccelerationEnabled,
                 ShowPosterBadges = ShowPosterBadges,
                 ShowPosterHoverYear = ShowPosterHoverYear,
                 ShowPosterHoverImdbRating = ShowPosterHoverImdbRating,                PosterSize = PosterSize,
@@ -307,6 +310,7 @@ namespace Cleario.Services
                     MetadataProvider = MetadataProvider,
                     CacheImages = CacheImages,
                     CacheLimitGb = CacheLimitGb,
+                    HardwareAccelerationEnabled = HardwareAccelerationEnabled,
                     ShowPosterBadges = ShowPosterBadges,
                     ShowPosterHoverYear = ShowPosterHoverYear,
                     ShowPosterHoverImdbRating = ShowPosterHoverImdbRating,
@@ -367,6 +371,7 @@ namespace Cleario.Services
             MetadataProvider = MetadataProviderMode.Cinemeta;
             CacheImages = false;
             CacheLimitGb = 2;
+            HardwareAccelerationEnabled = true;
             ShowPosterBadges = true;
             ShowPosterHoverYear = true;
             ShowPosterHoverImdbRating = true;            PosterSize = PosterSizeMode.Default;
@@ -437,6 +442,7 @@ namespace Cleario.Services
             MetadataProvider = dto.MetadataProvider;
             CacheImages = dto.CacheImages;
             CacheLimitGb = dto.CacheLimitGb <= 0 ? 0 : dto.CacheLimitGb;
+            HardwareAccelerationEnabled = dto.HardwareAccelerationEnabled;
             ShowPosterBadges = dto.ShowPosterBadges;
             ShowPosterHoverYear = dto.ShowPosterHoverYear;
             ShowPosterHoverImdbRating = dto.ShowPosterHoverImdbRating;            PosterSize = dto.PosterSize;
@@ -456,7 +462,8 @@ namespace Cleario.Services
             DisableSubtitlesByDefault = dto.DisableSubtitlesByDefault;
             DetailsSeriesView = Enum.IsDefined(typeof(DetailsSeriesViewMode), dto.DetailsSeriesView) ? dto.DetailsSeriesView : DetailsSeriesViewMode.Full;
             DetailsBackgroundBrightnessPercent = Math.Clamp(dto.DetailsBackgroundBrightnessPercent, 0, 100);
-            DetailsShowImdbRating = dto.DetailsShowImdbRating;            DisableSpoilers = dto.DisableSpoilers;
+            DetailsShowImdbRating = dto.DetailsShowImdbRating;
+            DisableSpoilers = dto.DisableSpoilers;
             EnableNextEpisodePopup = dto.EnableNextEpisodePopup;
             NextEpisodePopupSeconds = dto.NextEpisodePopupSeconds <= 0 ? 30 : dto.NextEpisodePopupSeconds;
             AutoPlayNextEpisode = dto.AutoPlayNextEpisode;
@@ -487,6 +494,7 @@ namespace Cleario.Services
             public MetadataProviderMode MetadataProvider { get; set; } = MetadataProviderMode.Cinemeta;
             public bool CacheImages { get; set; } = false;
             public int CacheLimitGb { get; set; } = 2;
+            public bool HardwareAccelerationEnabled { get; set; } = true;
             public bool ShowPosterBadges { get; set; } = true;
             public bool ShowPosterHoverYear { get; set; } = true;
             public bool ShowPosterHoverImdbRating { get; set; } = true;
@@ -505,7 +513,8 @@ namespace Cleario.Services
             public bool DisableSubtitlesByDefault { get; set; } = false;
             public DetailsSeriesViewMode DetailsSeriesView { get; set; } = DetailsSeriesViewMode.Full;
             public int DetailsBackgroundBrightnessPercent { get; set; } = 100;
-            public bool DetailsShowImdbRating { get; set; } = true;            public bool DisableSpoilers { get; set; } = false;
+            public bool DetailsShowImdbRating { get; set; } = true;
+            public bool DisableSpoilers { get; set; } = false;
             public bool EnableNextEpisodePopup { get; set; } = true;
             public int NextEpisodePopupSeconds { get; set; } = 30;
             public bool AutoPlayNextEpisode { get; set; } = true;

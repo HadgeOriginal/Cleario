@@ -29,6 +29,9 @@ namespace Cleario.Pages
         private int _homeLoadVersion;
         private bool _continueWatchingRefreshInProgress;
         private int _continueWatchingSectionVersion;
+        private int _lastRequestedVisiblePosterCount;
+        private int _homePosterFillRepairAttempt;
+        private Microsoft.UI.Dispatching.DispatcherQueueTimer? _homeSizeReloadTimer;
         private static readonly object _homeCatalogPreviewCacheLock = new();
         private static string _homeCatalogPreviewCacheSignature = string.Empty;
         private static PosterSizeMode _homeCatalogPreviewCachePosterSize = SettingsManager.PosterSize;
@@ -41,6 +44,13 @@ namespace Cleario.Pages
             public List<MetaItem> Items { get; init; } = new();
         }
 
+        private sealed class CatalogSectionTag
+        {
+            public string Key { get; init; } = string.Empty;
+            public int ItemCount { get; init; }
+            public int RequestedVisiblePosterCount { get; init; }
+        }
+
 
         public HomePage()
         {
@@ -51,15 +61,41 @@ namespace Cleario.Pages
             SizeChanged += HomePage_SizeChanged;
         }
 
-        private async void HomePage_SizeChanged(object sender, SizeChangedEventArgs e)
+        private void HomePage_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (_catalogs.Count == 0 || _isLoading || !SettingsManager.SaveMemory)
+            if (_catalogs.Count == 0 || _isLoading)
                 return;
 
-            if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 80)
+            if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) < 40)
                 return;
 
-            await LoadHomeAsync(forceReload: false);
+            ScheduleHomeReloadForSizeChange();
+        }
+
+        private void ScheduleHomeReloadForSizeChange()
+        {
+            _homeSizeReloadTimer ??= DispatcherQueue.CreateTimer();
+            _homeSizeReloadTimer.Stop();
+            _homeSizeReloadTimer.Interval = TimeSpan.FromMilliseconds(350);
+            _homeSizeReloadTimer.Tick -= HomeSizeReloadTimer_Tick;
+            _homeSizeReloadTimer.Tick += HomeSizeReloadTimer_Tick;
+            _homeSizeReloadTimer.Start();
+        }
+
+        private async void HomeSizeReloadTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+        {
+            sender.Stop();
+
+            if (_isLoading || _catalogs.Count == 0)
+                return;
+
+            var currentVisiblePosterCount = GetVisiblePosterCount();
+            if (currentVisiblePosterCount <= 0 || currentVisiblePosterCount == _lastRequestedVisiblePosterCount)
+                return;
+
+            _homePosterFillRepairAttempt = 0;
+            ClearHomeCatalogPreviewCache();
+            await LoadHomeAsync(forceReload: true);
         }
 
         private void HomePage_Loaded(object sender, RoutedEventArgs e)
@@ -96,6 +132,8 @@ namespace Cleario.Pages
             await SettingsManager.InitializeAsync();
             var posterSizeChanged = _lastAppliedPosterSize != SettingsManager.PosterSize;
             var homeCatalogSettingsChanged = !string.Equals(_lastHomeCatalogSettingsSignature, BuildHomeCatalogSettingsSignature(), StringComparison.OrdinalIgnoreCase);
+            if (posterSizeChanged || homeCatalogSettingsChanged || SettingsManager.SaveMemory)
+                _homePosterFillRepairAttempt = 0;
 
             if (_catalogs.Count == 0 || posterSizeChanged || homeCatalogSettingsChanged || SettingsManager.SaveMemory)
                 await LoadHomeAsync(forceReload: true);
@@ -156,6 +194,8 @@ namespace Cleario.Pages
                 await AddonManager.InitializeAsync(forceReload);
 
                 var visiblePosterCount = GetVisiblePosterCount();
+                _lastRequestedVisiblePosterCount = visiblePosterCount;
+
                 if (await TryRestoreCatalogSectionsFromCacheAsync(_lastHomeCatalogSettingsSignature, visiblePosterCount))
                     return;
 
@@ -223,6 +263,7 @@ namespace Cleario.Pages
             {
                 LoadingPanel.Visibility = Visibility.Collapsed;
                 _isLoading = false;
+                _ = ValidateHomePosterFillAfterLayoutAsync(loadVersion, _lastRequestedVisiblePosterCount);
             }
         }
 
@@ -293,6 +334,60 @@ namespace Cleario.Pages
             }
         }
 
+        private static void ClearHomeCatalogPreviewCache()
+        {
+            lock (_homeCatalogPreviewCacheLock)
+            {
+                _homeCatalogPreviewCacheSignature = string.Empty;
+                _homeCatalogPreviewCacheVisiblePosterCount = 0;
+                _homeCatalogPreviewCache = new List<CatalogPreviewData>();
+            }
+        }
+
+        private async Task ValidateHomePosterFillAfterLayoutAsync(int loadVersion, int requestedVisiblePosterCount)
+        {
+            try
+            {
+                await Task.Delay(550);
+            }
+            catch
+            {
+                return;
+            }
+
+            if (!IsLoaded || _isLoading || loadVersion != _homeLoadVersion || requestedVisiblePosterCount <= 0)
+                return;
+
+            var currentVisiblePosterCount = GetVisiblePosterCount();
+            if (currentVisiblePosterCount <= requestedVisiblePosterCount)
+                return;
+
+            if (!HasUnderfilledCatalogSection(currentVisiblePosterCount))
+                return;
+
+            if (_homePosterFillRepairAttempt >= 2)
+                return;
+
+            _homePosterFillRepairAttempt++;
+            ClearHomeCatalogPreviewCache();
+            await LoadHomeAsync(forceReload: true);
+        }
+
+
+        private bool HasUnderfilledCatalogSection(int expectedVisiblePosterCount)
+        {
+            if (SectionsHost == null)
+                return false;
+
+            foreach (var section in SectionsHost.Children.OfType<FrameworkElement>())
+            {
+                if (section.Tag is CatalogSectionTag tag && tag.ItemCount < expectedVisiblePosterCount)
+                    return true;
+            }
+
+            return false;
+        }
+
         private void ClearCatalogSections()
         {
             _continueWatchingSection = null;
@@ -331,14 +426,40 @@ namespace Cleario.Pages
             int visiblePosterCount)
         {
             var genre = catalog.RequiresGenre && catalog.GenreOptions.Count > 0 ? catalog.GenreOptions[0] : string.Empty;
-            var items = await DiscoverService.GetCatalogItemsAsync(catalog.SourceBaseUrl, catalog, 0, string.Empty, genre);
-            var rowItems = items.Take(visiblePosterCount).ToList();
+            var rowItems = new List<MetaItem>();
+            var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var skip = 0;
+
+            for (var attempt = 0; attempt < 4 && rowItems.Count < visiblePosterCount; attempt++)
+            {
+                var items = await DiscoverService.GetCatalogItemsAsync(catalog.SourceBaseUrl, catalog, skip, string.Empty, genre);
+                if (items.Count == 0)
+                    break;
+
+                foreach (var item in items)
+                {
+                    var key = !string.IsNullOrWhiteSpace(item.Id) ? item.Id : $"{item.Name}|{item.Type}|{rowItems.Count}";
+                    if (seenIds.Add(key))
+                        rowItems.Add(item);
+
+                    if (rowItems.Count >= visiblePosterCount)
+                        break;
+                }
+
+                if (!catalog.SupportsSkip)
+                    break;
+
+                skip += items.Count;
+                if (rowItems.Count < visiblePosterCount)
+                    await Task.Delay(120);
+            }
+
             return rowItems.Count == 0
                 ? null
                 : new CatalogPreviewData
                 {
                     Catalog = catalog,
-                    Items = rowItems
+                    Items = rowItems.Take(visiblePosterCount).ToList()
                 };
         }
 
@@ -720,7 +841,16 @@ namespace Cleario.Pages
             if (rowItems.Count == 0)
                 return;
 
-            var section = new StackPanel { Spacing = 12 };
+            var section = new StackPanel
+            {
+                Spacing = 12,
+                Tag = new CatalogSectionTag
+                {
+                    Key = DiscoverService.BuildCatalogKey(catalog),
+                    ItemCount = rowItems.Count,
+                    RequestedVisiblePosterCount = _lastRequestedVisiblePosterCount
+                }
+            };
             var headerGrid = new Grid();
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });

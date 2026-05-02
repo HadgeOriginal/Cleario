@@ -9,7 +9,7 @@
   <Identity
     Name="Hadge.Cleario"
     Publisher="CN=Hadge"
-    Version="0.5.1.0" />
+    Version="0.5.2.0" />
 
   <mp:PhoneIdentity PhoneProductId="36e8e47b-78b1-422c-9c1d-c28c87d27f17" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 

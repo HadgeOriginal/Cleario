@@ -1329,7 +1329,9 @@ namespace Cleario.Pages
             stream.ContentId = _currentItem?.Id ?? stream.ContentId;
             stream.SourceBaseUrl = _currentItem?.SourceBaseUrl ?? stream.SourceBaseUrl;
             stream.Year = !string.IsNullOrWhiteSpace(_meta.Year) ? _meta.Year : ExtractYear(_meta.ReleaseInfo);
-            stream.ImdbRating = _meta.ImdbRating;            stream.ContentLogoUrl = !string.IsNullOrWhiteSpace(_meta.LogoUrl) ? _meta.LogoUrl : CatalogService.BuildMetaHubLogoUrl(_currentItem?.Id ?? string.Empty, "medium");
+            stream.ImdbRating = _meta.ImdbRating;
+            stream.ExpectedRuntime = _meta.Runtime;
+            stream.ContentLogoUrl = !string.IsNullOrWhiteSpace(_meta.LogoUrl) ? _meta.LogoUrl : CatalogService.BuildMetaHubLogoUrl(_currentItem?.Id ?? string.Empty, "medium");
             stream.PosterUrl = !string.IsNullOrWhiteSpace(_meta.PosterUrl) ? _meta.PosterUrl : (_currentItem?.PosterUrl ?? string.Empty);
             stream.FallbackPosterUrl = !string.IsNullOrWhiteSpace(_currentItem?.FallbackPosterUrl) ? _currentItem.FallbackPosterUrl : (_currentItem?.Poster ?? string.Empty);
             if (stream.IsResumeCandidate && stream.ResumePositionMs > 15_000)

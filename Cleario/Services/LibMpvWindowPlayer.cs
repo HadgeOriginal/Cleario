@@ -219,7 +219,7 @@ namespace Cleario.Services
             }
         }
 
-        public void Start(string url, int volume, long startPositionMs = 0)
+        public void Start(string url, int volume, long startPositionMs = 0, bool hardwareAccelerationEnabled = true)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(LibMpvWindowPlayer));
@@ -262,16 +262,24 @@ namespace Cleario.Services
                     if (!TrySetOptionString("vo", "gpu-next"))
                         TrySetOptionString("vo", "gpu");
 
-                    // Force the Windows D3D11 path so HEVC Main10/DV is decoded and presented without
-                    // copying 4K 10-bit frames back through system RAM. If d3d11va is not usable on a
-                    // machine, mpv can still fall back to its normal safe auto probing.
+                    // Force the Windows D3D11 presentation path for stable embedded video. The
+                    // hardware acceleration setting controls video decode acceleration; when disabled,
+                    // MPV still renders into Cleario's native child HWND but decodes in software.
                     TrySetOptionString("gpu-context", "d3d11");
                     TrySetOptionString("gpu-api", "d3d11");
-                    if (!TrySetOptionString("hwdec", "d3d11va"))
-                        TrySetOptionString("hwdec", "auto-safe");
-                    TrySetOptionString("gpu-hwdec-interop", "d3d11va");
-                    TrySetOptionString("hwdec-codecs", "hevc,h264,vc1,mpeg2video,vp8,vp9,av1");
-                    TrySetOptionString("vd-lavc-dr", "yes");
+                    if (hardwareAccelerationEnabled)
+                    {
+                        if (!TrySetOptionString("hwdec", "d3d11va"))
+                            TrySetOptionString("hwdec", "auto-safe");
+                        TrySetOptionString("gpu-hwdec-interop", "d3d11va");
+                        TrySetOptionString("hwdec-codecs", "hevc,h264,vc1,mpeg2video,vp8,vp9,av1");
+                        TrySetOptionString("vd-lavc-dr", "yes");
+                    }
+                    else
+                    {
+                        TrySetOptionString("hwdec", "no");
+                        TrySetOptionString("vd-lavc-dr", "no");
+                    }
 
                     // Dolby Vision/HDR rendering hints. These do not transcode or downscale the stream;
                     // they only tell mpv/libplacebo to send the right output colorspace and avoid expensive

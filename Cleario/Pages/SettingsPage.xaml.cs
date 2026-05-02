@@ -94,6 +94,7 @@ namespace Cleario.Pages
             ShowPosterBadgesToggle.IsOn = SettingsManager.ShowPosterBadges;
             ShowPosterHoverYearToggle.IsOn = SettingsManager.ShowPosterHoverYear;
             ShowPosterHoverImdbToggle.IsOn = SettingsManager.ShowPosterHoverImdbRating;
+            HardwareAccelerationToggle.IsOn = SettingsManager.HardwareAccelerationEnabled;
             UpdatePosterHoverBadgeOptionsVisibility();
             SelectPosterSizeOption(SettingsManager.PosterSize);
             PlayerSingleClickPlayPauseToggle.IsOn = SettingsManager.PlayerSingleClickPlayPause;
@@ -1264,6 +1265,7 @@ namespace Cleario.Pages
             await SettingsManager.SaveAsync();
         }
 
+
         private async void DisableSpoilersToggle_Toggled(object sender, RoutedEventArgs e)
         {
             if (_isLoading)
@@ -1353,6 +1355,16 @@ namespace Cleario.Pages
         private void OpenLogsButton_Click(object sender, RoutedEventArgs e)
         {
             CrashLogger.OpenLogFolder();
+        }
+
+
+        private async void HardwareAccelerationToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isLoading)
+                return;
+
+            SettingsManager.HardwareAccelerationEnabled = HardwareAccelerationToggle.IsOn;
+            await SettingsManager.SaveAsync();
         }
 
         private async void SaveMemoryToggle_Toggled(object sender, RoutedEventArgs e)
